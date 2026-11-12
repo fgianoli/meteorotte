@@ -1,9 +1,9 @@
 (function () {
   "use strict";
   const LEVEL_COLOR = ["#16a34a", "#eab308", "#f97316", "#dc2626"];
-  const LEVEL_NAME = ["nessuna allerta", "giallo", "arancione", "rosso"];
-  const HZ_NAME = { official: "Allerta ufficiale (MeteoAlarm)", flood: "Piena / piena improvvisa", rain: "Pioggia intensa", cold: "Freddo / ipotermia", heat: "Caldo estremo", snow: "Neve / valanghe (indicativo)", wind: "Vento / temporali" };
-  const HOURLY = "temperature_2m,apparent_temperature,precipitation,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code";
+  const LEVEL_NAME = [0, 1, 2, 3].map((i) => T("lvl" + i));
+  const HZ_NAME = Object.fromEntries(["official", "flood", "rain", "cold", "heat", "snow", "wind"].map((k) => [k, T("hz_" + k)]));
+  const HOURLY = "temperature_2m,apparent_temperature,precipitation,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,is_day";
   const CACHE_KEY = "meteorotte-cache-v1";
 
   const $ = (s) => document.querySelector(s);
@@ -34,15 +34,15 @@
   (window.SHELTERS || []).forEach((s) => poi(s.lat, s.lon, s.k, [s.n || KIND[s.k][1].split(":")[0], KIND[s.k][1], s.q ? "Quota " + s.q + " m" : "", "Fonte: OpenStreetMap, da verificare"]).addTo(shelterLayer));
   const aidLayer = L.layerGroup();
   (window.AIUTI || []).forEach((a) => poi(a.lat, a.lon, a.tipo, [a.nome, (KIND[a.tipo] || [, a.tipo])[1], a.orari, a.contatto, a.verificato ? "Verificato il " + a.verificato : ""]).addTo(aidLayer));
-  const overlays = { "Radar pioggia (ultime 2 h)": radarLayer, "Vento attuale": windLayer, "Sentieri segnati (estivi)": trailLayer };
-  if ((window.SHELTERS || []).length) overlays["Bivacchi e rifugi"] = shelterLayer;
-  if ((window.AIUTI || []).length) { overlays["Punti di aiuto"] = aidLayer; aidLayer.addTo(map); }
+  const overlays = { [T("radar")]: radarLayer, [T("wind")]: windLayer, [T("trails")]: trailLayer };
+  if ((window.SHELTERS || []).length) overlays[T("shelters")] = shelterLayer;
+  if ((window.AIUTI || []).length) { overlays[T("aid")] = aidLayer; aidLayer.addTo(map); }
   L.control.layers(null, overlays, { collapsed: window.innerWidth < 800 }).addTo(map);
 
   const legend = L.control({ position: "bottomright" });
   legend.onAdd = () => {
     const d = L.DomUtil.create("div", "legend");
-    d.innerHTML = LEVEL_NAME.map((n, i) => `<div><i style="background:${LEVEL_COLOR[i]}"></i>${n}</div>`).join("") + "<div style='color:#64748b'>prossime 72 h</div>";
+    d.innerHTML = LEVEL_NAME.map((n, i) => `<div><i style="background:${LEVEL_COLOR[i]}"></i>${n}</div>`).join("") + "<div style='color:#64748b'>" + T("next72") + "</div>";
     return d;
   };
   legend.addTo(map);
@@ -72,7 +72,7 @@
   }
 
   async function loadAll() {
-    $("#status").textContent = "Scarico previsioni…";
+    $("#status").textContent = T("downloading");
     const points = []; const index = [];
     HOTSPOTS.forEach((s) => {
       index.push({ id: s.id, role: "site" }); points.push([s.lat, s.lon]);
@@ -111,18 +111,18 @@
       const site = HOTSPOTS.find((s) => s.id === x.id);
       if (!site) return;
       const n = x.wx.hourly.time.length;
-      state.results[x.id] = { site, wx: x.wx, res: Object.assign({ startIndex: 0, endIndex: n }, x.res), hydro: x.hydro };
+      state.results[x.id] = { site, wx: x.wx, res: Object.assign({ startIndex: 0, endIndex: n }, x.res), hydro: x.hydro, obs: x.obs };
     });
     return j;
   }
 
   async function refresh() {
-    const hhmm = (t) => new Date(t).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+    const hhmm = (t) => new Date(t).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
     try {
       const j = await loadServer();
       state.fetchedAt = Date.parse(j.generated); state.mode = "server";
       const ko = Object.entries(j.sources).filter(([, v]) => !/^(ok|nessun)/.test(v)).map(([k]) => k);
-      $("#status").textContent = "Server · aggiornato alle " + hhmm(state.fetchedAt) + (ko.length ? " · ⚠️ non disponibili: " + ko.join(", ") : "");
+      $("#status").textContent = T("server") + " " + hhmm(state.fetchedAt) + (ko.length ? " · ⚠️ " + T("missing") + ": " + ko.join(", ") : "");
       return render();
     } catch (e) { console.info("Server non disponibile, uso le API direttamente:", e.message); }
     try {
@@ -130,16 +130,16 @@
       state.fetchedAt = Date.now(); state.mode = "direct";
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: state.fetchedAt, raw })); } catch (e) {}
       compute(raw);
-      $("#status").textContent = "Diretto · aggiornato alle " + hhmm(state.fetchedAt);
+      $("#status").textContent = T("direct") + " " + hhmm(state.fetchedAt);
     } catch (e) {
       console.error(e);
       let cached = null;
       try { cached = JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (_) {}
       if (cached) {
         state.fetchedAt = cached.t; compute(cached.raw);
-        $("#status").textContent = "⚠️ Offline – dati del " + new Date(cached.t).toLocaleString("it-IT");
+        $("#status").textContent = T("offline") + " " + new Date(cached.t).toLocaleString(LOCALE);
       } else {
-        $("#status").textContent = "⚠️ Impossibile scaricare i dati (" + e.message + ")";
+        $("#status").textContent = T("failed") + " (" + e.message + ")";
       }
     }
     render();
@@ -147,12 +147,12 @@
 
   // ---------- interfaccia
   function fmtTime(sec) {
-    return new Date(sec * 1000).toLocaleString("it-IT", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(sec * 1000).toLocaleString(LOCALE, { weekday: "short", hour: "2-digit", minute: "2-digit" });
   }
 
   function renderFilters() {
     const regions = ["Tutte"].concat([...new Set(HOTSPOTS.map((s) => s.regione))]);
-    $("#filters").innerHTML = regions.map((r) => `<span class="chip ${r === state.region ? "on" : ""}" data-r="${r}">${r}</span>`).join("");
+    $("#filters").innerHTML = regions.map((r) => `<span class="chip ${r === state.region ? "on" : ""}" data-r="${r}">${r === "Tutte" ? T("all") : r}</span>`).join("");
     $("#filters").querySelectorAll(".chip").forEach((c) => c.onclick = () => {
       state.region = c.dataset.r; render();
       const vis = HOTSPOTS.filter((s) => state.region === "Tutte" || s.regione === state.region);
@@ -170,7 +170,7 @@
         <span class="dot" style="background:${LEVEL_COLOR[x.res.level]}"></span>
         <div><b>${x.site.nome}</b><small>${x.site.regione} · ${x.site.tipo} · ${Math.round(x.wx.elevation)} m</small>
         <div class="hz">${hz}</div></div></div>`;
-    }).join("") || "<p style='padding:12px'>Nessun dato.</p>";
+    }).join("") || "<p style='padding:12px'>" + T("noData") + "</p>";
     $("#list").querySelectorAll(".site").forEach((el) => el.onclick = () => select(el.dataset.id, true));
   }
 
@@ -196,9 +196,32 @@
     const bars = P.map((p, i) => p > 0 ? `<rect x="${xs(i).toFixed(1)}" y="${(H - 12 - (p / pmax) * 40).toFixed(1)}" width="${(W / n).toFixed(1)}" height="${((p / pmax) * 40).toFixed(1)}" fill="${S[i] > 0 ? "#93c5fd" : "#2563eb"}" opacity=".6"/>` : "").join("");
     const line = T.map((v, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)},${yt(v).toFixed(1)}`).join("");
     const zero = (tmin < 0 && tmax > 0) ? `<line x1="0" x2="${W}" y1="${yt(0)}" y2="${yt(0)}" stroke="#94a3b8" stroke-dasharray="3 3"/><text x="2" y="${yt(0) - 2}" font-size="9" fill="#64748b">0°</text>` : "";
-    const days = []; for (let i = 0; i < n; i++) { const d = new Date(h.time[s + i] * 1000); if (d.getHours() === 0) days.push(`<line x1="${xs(i)}" x2="${xs(i)}" y1="0" y2="${H - 12}" stroke="#e2e8f0"/><text x="${xs(i) + 2}" y="${H - 2}" font-size="9" fill="#64748b">${d.toLocaleDateString("it-IT", { weekday: "short" })}</text>`); }
+    const days = []; for (let i = 0; i < n; i++) { const d = new Date(h.time[s + i] * 1000); if (d.getHours() === 0) days.push(`<line x1="${xs(i)}" x2="${xs(i)}" y1="0" y2="${H - 12}" stroke="#e2e8f0"/><text x="${xs(i) + 2}" y="${H - 2}" font-size="9" fill="#64748b">${d.toLocaleDateString(LOCALE, { weekday: "short" })}</text>`); }
     return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${days.join("")}${bars}${zero}<path d="${line}" fill="none" stroke="#dc2626" stroke-width="1.6"/>
       <text x="${W - 2}" y="10" font-size="9" text-anchor="end" fill="#64748b">T percepita ${Math.round(Math.min(...T))}…${Math.round(Math.max(...T))}°C · pioggia max ${Math.max(...P).toFixed(1)} mm/h</text></svg>`;
+  }
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const hm = (sec) => new Date(sec * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
+  // Ore di buio: dal tramonto all'alba successiva, dalle previsioni orarie.
+  function night(x) {
+    const h = x.wx.hourly, d = h.is_day;
+    if (!d || !d.length) return "";
+    const s = x.res.startIndex, e = x.res.endIndex;
+    let a = -1, b = -1;
+    if (d[s] === 0) a = s; else for (let i = s + 1; i < e; i++) if (d[i] === 0) { a = i; break; }
+    if (a < 0) return "";
+    for (let i = a + 1; i < e; i++) if (d[i] === 1) { b = i; break; }
+    return `<div class="fact">🌙 ${a === s ? T("darkNow") : T("darkFrom") + " " + hm(h.time[a])}${b > 0 ? " " + T("until") + " " + hm(h.time[b]) : ""}</div>`;
+  }
+  // Stazione meteo più vicina: dato misurato, non previsto.
+  function obsLine(x) {
+    const o = x.obs;
+    if (!o) return "";
+    const p = [o.t + " °C"];
+    if (o.wind != null) p.push("💨 " + Math.round(o.wind) + (o.gust != null ? "/" + Math.round(o.gust) : "") + " km/h");
+    if (o.snow) p.push("❄️ " + o.snow + " cm");
+    return `<div class="fact">🌡️ ${T("measured")} ${esc(o.label)}${o.alt ? " (" + Math.round(o.alt) + " m" : " ("}${o.km ? ", " + o.km + " km" : ""}): <b>${p.join(" · ")}</b> · ${hm(o.time)} <span>${esc(o.source)}</span></div>`;
   }
 
   // Striscia colorata: livello di allerta ora per ora nelle prossime 72 ore (dai modelli meteo).
@@ -207,7 +230,7 @@
     if (!tl.length) return "";
     const t0 = x.wx.hourly.time[x.res.startIndex];
     const cells = tl.map((l, i) => `<i style="background:${LEVEL_COLOR[l]}${new Date((t0 + i * 3600) * 1000).getHours() === 0 ? ";border-left:2px solid #0f172a" : ""}" title="${fmtTime(t0 + i * 3600)}"></i>`).join("");
-    return `<div class="tlh">Prossime 72 ore <span>adesso → fra 3 giorni</span></div><div class="tl">${cells}</div>`;
+    return `<div class="tlh">${T("tl")} <span>${T("tlSpan")}</span></div><div class="tl">${cells}</div>`;
   }
 
   // Cartello a schermo intero da proiettare o stampare nei punti di accoglienza.
@@ -219,9 +242,9 @@
     const el = document.createElement("div");
     el.className = "poster";
     el.innerHTML = `<div class="ph" style="background:${LEVEL_COLOR[x.res.level]};color:${x.res.level === 1 ? "#111" : "#fff"}"><span>${x.site.nome}</span>
-        <span class="noprint"><button class="btn ghost" id="pprint">Stampa</button> <button class="btn ghost" id="pclose">✕ Chiudi</button></span></div>
+        <span class="noprint"><button class="btn ghost" id="pprint">${T("print")}</button> <button class="btn ghost" id="pclose">${T("close")}</button></span></div>
       <div class="pb" dir="${lang.rtl ? "rtl" : "ltr"}" lang="${lang.code}"></div>
-      <div class="pf">${qr}<div>Aggiornato: ${new Date(state.fetchedAt).toLocaleString("it-IT")}<br>MeteoRotte · avviso automatico, non sostituisce le allerte ufficiali${lang.bozza ? "<br>⚠️ Traduzione non validata" : ""}</div></div>`;
+      <div class="pf">${qr}<div>${T("updated")}: ${new Date(state.fetchedAt).toLocaleString(LOCALE)}<br>${T("posterNote")}${lang.bozza ? "<br>" + T("draftShort") : ""}</div></div>`;
     const pb = el.querySelector(".pb");
     lines.slice(1).forEach((ln) => { const p = document.createElement("p"); p.textContent = ln; pb.appendChild(p); });
     document.body.appendChild(el);
@@ -235,23 +258,24 @@
     if (!x) { d.style.display = "none"; return; }
     const lang = LANGS.find((l) => l.code === state.lang);
     const msg = composeMessage(x.site, x.res, state.lang);
-    const rows = x.res.hazards.map((h) => `<tr><td>${LEVEL_ICON[h.level]} ${ICONS[h.type]}</td><td><b>${HZ_NAME[h.type]}</b><br><small>${LEVEL_NAME[h.level]} da ${fmtTime(h.time)} · ${h.value != null ? Math.round(h.value) + " " : ""}${h.unit} · ${h.link ? `<a href="${h.link}" target="_blank" rel="noopener">${h.source}</a>` : h.source}</small></td></tr>`).join("")
-      || `<tr><td>🟢</td><td>Nessuna soglia superata nelle prossime 72 h</td></tr>`;
+    const rows = x.res.hazards.map((h) => `<tr><td>${LEVEL_ICON[h.level]} ${ICONS[h.type]}</td><td><b>${HZ_NAME[h.type]}</b><br><small>${LEVEL_NAME[h.level]} ${T("from")} ${fmtTime(h.time)} · ${h.value != null ? Math.round(h.value) + " " : ""}${h.unit} · ${h.link ? `<a href="${h.link}" target="_blank" rel="noopener">${h.source}</a>` : h.source}</small></td></tr>`).join("")
+      || `<tr><td>🟢</td><td>${T("none72")}</td></tr>`;
     const links = (LINKS[x.site.paese] || []).concat(LINKS.ALL).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join("");
     d.style.display = "block";
-    d.innerHTML = `<h2>${x.site.nome}</h2><p class="note">${x.site.note || ""}<br>Emergenze: <b>${EMERGENCY[x.site.paese] || "112"}</b></p>
+    d.innerHTML = `<h2>${x.site.nome}</h2><p class="note">${x.site.note || ""}<br>${T("emergency")}: <b>${EMERGENCY[x.site.paese] || "112"}</b></p>
       ${timeline(x)}
       ${sparkline(x)}
-      ${(x.hydro || []).map((h) => `<div style="font-size:12px;color:#334155">💧 ${h.label}: ${(h.h_mm / 1000).toFixed(2)} m alle ${new Date(h.t * 1000).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</div>`).join("")}
+      ${night(x)}${obsLine(x)}
+      ${(x.hydro || []).map((h) => `<div class="fact">💧 ${esc(h.label)}: ${h.h_mm != null ? (h.h_mm / 1000).toFixed(2) + " m" : ""}${h.q != null ? " · " + h.q + " m³/s" : ""} · ${hm(h.t)}${h.soglia ? ` <span>(${T("threshold")}: ${esc(h.soglia)})</span>` : ""}</div>`).join("")}
       <table class="hzt">${rows}</table>
       <div class="msg" dir="${lang.rtl ? "rtl" : "ltr"}" lang="${lang.code}" id="msgbox"></div>
-      ${lang.bozza ? `<div class="warn">⚠️ Traduzione in ${lang.label} non ancora validata da un madrelingua: non inoltrarla senza averla fatta controllare.</div>` : ""}
-      <div class="row"><button class="btn" id="copy">Copia messaggio</button><button class="btn ghost" id="copyall">Copia in tutte le lingue</button><button class="btn ghost" id="poster">🖨 Cartello</button><span id="copied" style="font-size:12px;color:#16a34a"></span></div>
-      <div class="links">Allerte ufficiali: ${links}</div>`;
+      ${lang.bozza ? `<div class="warn">⚠️ ${lang.label}: ${T("draft")}</div>` : ""}
+      <div class="row"><button class="btn" id="copy">${T("copy")}</button><button class="btn ghost" id="copyall">${T("copyAll")}</button><button class="btn ghost" id="poster">${T("poster")}</button><span id="copied" style="font-size:12px;color:#16a34a"></span></div>
+      <div class="links">${T("official")} ${links}</div>`;
     $("#msgbox").textContent = msg;
     const copy = async (text) => {
-      try { await navigator.clipboard.writeText(text); $("#copied").textContent = "Copiato ✓"; }
-      catch (e) { $("#copied").textContent = "Copia non riuscita: seleziona il testo a mano"; }
+      try { await navigator.clipboard.writeText(text); $("#copied").textContent = T("copied"); }
+      catch (e) { $("#copied").textContent = T("copyFail"); }
     };
     $("#copy").onclick = () => copy(msg);
     $("#poster").onclick = () => showPoster(x);
@@ -267,6 +291,12 @@
   }
 
   function render() { renderFilters(); renderDetail(); renderList(); renderMarkers(); }
+
+  // ---------- lingua dell'interfaccia
+  document.documentElement.lang = UI_LANG;
+  document.querySelectorAll("[data-t]").forEach((el) => { el.innerHTML = T(el.dataset.t); });
+  $("#uilang").innerHTML = UI_LANGS.map((l) => `<option value="${l}" ${l === UI_LANG ? "selected" : ""}>${l.toUpperCase()}</option>`).join("");
+  $("#uilang").onchange = (e) => { try { localStorage.setItem("meteorotte-ui", e.target.value); } catch (_) {} location.reload(); };
 
   // ---------- lingua
   $("#lang").innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.label}</option>`).join("");
@@ -288,7 +318,7 @@
     radarIdx = i;
     radarTiles.forEach((t, k) => t.setOpacity(k === i ? 0.7 : 0));
     const f = radarFrames[i];
-    if (f) $("#rtime").textContent = new Date(f.time * 1000).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) + (f.nowcast ? " (previsione)" : "");
+    if (f) $("#rtime").textContent = new Date(f.time * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" }) + (f.nowcast ? " (previsione)" : "");
     $("#rslider").value = i;
   }
   async function loadRadar() {
@@ -345,24 +375,42 @@
     if (document.querySelector(".modal")) return;
     const el = document.createElement("div");
     el.className = "modal";
-    el.innerHTML = `<div class="mbox"><h2>Avvertenze</h2>
-      <ul>
-        <li><b>Non è un'allerta ufficiale.</b> MeteoRotte è un prototipo sperimentale e non è un servizio di protezione civile. Valgono sempre le allerte e le indicazioni delle autorità.</li>
-        <li><b>Verde non significa sicuro.</b> Le allerte sono calcolate in automatico da modelli e dati aperti: possono esserci falsi allarmi e pericoli non segnalati (per esempio rilasci di dighe, temporali locali, valanghe).</li>
-        <li><b>I dati possono essere in ritardo o mancare.</b> Controlla sempre l'ora di aggiornamento in alto.</li>
-        <li><b>Traduzioni:</b> non tutte sono state validate da madrelingua.</li>
-        <li><b>Sentieri, bivacchi e rifugi</b> vengono da OpenStreetMap: possono essere sbagliati, chiusi o non percorribili. Con la neve i sentieri non si vedono e i rifugi possono essere chiusi.</li>
-        <li><b>Privacy:</b> l'app non chiede la posizione, non ha account e non raccoglie dati personali.</li>
-        <li><b>In pericolo chiama il 112</b>: è gratuito in tutta Europa.</li>
-      </ul>
-      <p class="en">Experimental tool, not an official warning service. Green does not mean safe. In danger call 112. · Outil expérimental, pas une alerte officielle. Vert ne veut pas dire sûr. En danger, appelez le 112.</p>
-      <p class="src">Nessuna garanzia sull'esattezza dei dati: chi li usa lo fa sotto la propria responsabilità. Fonti: Open-Meteo (ECMWF, DWD, Météo-France), Copernicus EMS GloFAS, MeteoAlarm/EUMETNET, Hub'Eau, EAWS/AINEVA, RainViewer, © OpenStreetMap contributors (ODbL), Waymarked Trails.</p>
-      <button class="btn" id="mok">Ho capito</button></div>`;
+    el.innerHTML = `<div class="mbox"><h2>${T("discTitle")}</h2>
+      <ul>${T("disc").map((x) => "<li>" + x + "</li>").join("")}</ul>
+      <p class="src">${T("discSrc")} Open-Meteo (ECMWF, DWD, Météo-France), Copernicus EMS GloFAS, MeteoAlarm/EUMETNET, Hub'Eau, ARPAL, ARSO, DHMZ, EAWS/AINEVA, RainViewer, © OpenStreetMap contributors (ODbL), Waymarked Trails.</p>
+      <button class="btn" id="mok">${T("discOk")}</button></div>`;
     document.body.appendChild(el);
     el.querySelector("#mok").onclick = () => { try { localStorage.setItem("meteorotte-avvertenze", "1"); } catch (e) {} el.remove(); };
   }
   $("#info").onclick = showDisclaimer;
   try { if (!localStorage.getItem("meteorotte-avvertenze")) showDisclaimer(); } catch (e) { showDisclaimer(); }
+
+  // ---------- notifiche push (solo con il server e su HTTPS)
+  const b64 = (s) => Uint8Array.from(atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  async function pushState() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !location.protocol.startsWith("https")) return null;
+    const reg = await navigator.serviceWorker.ready;
+    return { reg, sub: await reg.pushManager.getSubscription() };
+  }
+  async function togglePush() {
+    const btn = $("#push");
+    try {
+      const st = await pushState();
+      if (!st) return;
+      if (st.sub) {
+        await fetch("push/unsubscribe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ endpoint: st.sub.endpoint }) });
+        await st.sub.unsubscribe(); btn.textContent = "🔔 " + T("pushOff"); return;
+      }
+      if ((await Notification.requestPermission()) !== "granted") { btn.textContent = "🔕 " + T("pushDenied"); return; }
+      const { key } = await (await fetch("push/key")).json();
+      const sub = await st.reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) });
+      const r = await fetch("push/subscribe", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ subscription: sub, region: state.region === "Tutte" ? "*" : state.region, lang: state.lang, min: 2 }) });
+      if (!r.ok) throw new Error("push " + r.status);
+      btn.textContent = "🔔 " + T("pushOn") + (state.region === "Tutte" ? "" : ": " + state.region);
+    } catch (e) { console.warn(e); btn.textContent = "🔕 " + T("pushErr"); }
+  }
+  pushState().then((st) => { if (!st) return; const b = $("#push"); b.hidden = false; b.textContent = "🔔 " + T(st.sub ? "pushOn" : "pushOff"); b.onclick = togglePush; }).catch(() => {});
 
   // ---------- avvio
   refresh();

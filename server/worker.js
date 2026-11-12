@@ -28,6 +28,11 @@ function writeAtomic(file, data) {
   fs.renameSync(tmp, file);
 }
 
+function dist(la1, lo1, la2, lo2) {
+  const r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+
 function officialType(event, site) {
   const e = event.toLowerCase();
   const mountain = site.tipo === "montagna";
@@ -85,6 +90,13 @@ async function run() {
   const today = process.env.EAWS_DATE || new Date(now * 1000 + 3600e3).toISOString().slice(0, 10);
 
   const full = !cache || Date.now() - cache.t >= INTERVAL - 30000;
+  const omirlCodes = [...new Set(H.flatMap((s) => s.omirl || []))];
+  const [liguria, slovenia, stz] = await Promise.all([
+    settle("idrometri-arpal", src.omirlHydro(omirlCodes), status),
+    settle("idrometri-arso", src.arsoHydro(), status),
+    settle("stazioni-meteo", src.stations(), status)
+  ]);
+  if (stz && stz.ko.length) status["stazioni-meteo"] = "ok (mancano: " + stz.ko.join(", ") + ")";
   const [wx, fl, hydro, aval, ...ma] = await Promise.all([
     full ? settle("open-meteo", src.forecast(points), status) : cache.wx,
     full ? settle("glofas", src.glofas(rivers.map((s) => s.flood || [s.lat, s.lon])), status) : cache.fl,
@@ -140,15 +152,46 @@ async function run() {
       const hz = h && S.Alerts.hydroHazard(h.series, now, h.label);
       if (hz) extra.push(hz);
     }
+    const hydroNow = [];
+    // idrometri ARPAL: soglie ufficiali arancione/rossa, altrimenti velocità di risalita
+    for (const code of site.omirl || []) {
+      const h = liguria && liguria[code];
+      if (!h || !h.series.length) continue;
+      const last = h.series[h.series.length - 1];
+      hydroNow.push({ code, label: h.label, t: last.t, h_mm: last.h, soglia: h.orange ? `arancione ${h.orange} m, rossa ${h.red} m` : "" });
+      if (now - last.t > 3 * 3600) continue;
+      const m = last.h / 1000;
+      const lvl = h.red != null && m >= h.red ? 3 : h.orange != null && m >= h.orange ? 2 : 0;
+      if (lvl) extra.push({ type: "flood", level: lvl, time: last.t, value: Math.round(m * 100) / 100, unit: "m – sopra la soglia ufficiale", source: "idrometro " + h.label });
+      else { const hz = S.Alerts.hydroHazard(h.series, now, h.label); if (hz) extra.push(hz); }
+    }
+    // idrometri ARSO: portata rispetto alle tre soglie ufficiali di piena
+    for (const code of site.arso || []) {
+      const h = slovenia && slovenia[code];
+      if (!h || h.t == null) continue;
+      hydroNow.push({ code, label: h.label, t: h.t, h_mm: h.h_cm != null ? h.h_cm * 10 : null, q: h.q, soglia: h.soglie[0] ? `piena da ${h.soglie[0]} m³/s` : "" });
+      if (now - h.t > 3 * 3600 || h.q == null) continue;
+      const lvl = h.soglie.reduce((l, th, i) => (th != null && h.q >= th ? i + 1 : l), 0);
+      if (lvl) extra.push({ type: "flood", level: lvl, time: h.t, value: Math.round(h.q), unit: "m³/s – sopra la soglia di piena", source: "idrometro " + h.label });
+    }
     res = S.Alerts.merge(res, extra);
+
+    // stazione meteo più vicina (entro 25 km) con un dato recente
+    let obs = null;
+    for (const st of (stz && stz.list) || []) {
+      if (st.time && now - st.time > 3 * 3600) continue;
+      const km = dist(site.lat, site.lon, st.lat, st.lon);
+      if (km <= 25 && (!obs || km < obs.km)) obs = Object.assign({ km: Math.round(km) }, st);
+    }
 
     const h = r.wx.hourly, a = res.startIndex, b = res.endIndex;
     const cut = (k) => (h[k] || []).slice(a, b);
     const messages = Object.fromEntries(S.LANGS.map((l) => [l.code, S.composeMessage(site, res, l.code)]));
-    const hydroNow = (site.hubeau || []).map((c) => hydro && hydro[c] && hydro[c].series.length ? { code: c, label: hydro[c].label, t: hydro[c].series.at(-1).t, h_mm: hydro[c].series.at(-1).h } : null).filter(Boolean);
+    hydroNow.push(...(site.hubeau || []).map((c) => hydro && hydro[c] && hydro[c].series.length ? { code: c, label: hydro[c].label, t: hydro[c].series.at(-1).t, h_mm: hydro[c].series.at(-1).h } : null).filter(Boolean));
     sites.push({
       id: site.id,
-      wx: { elevation: r.wx.elevation, hourly: { time: cut("time"), apparent_temperature: cut("apparent_temperature"), temperature_2m: cut("temperature_2m"), precipitation: cut("precipitation"), snowfall: cut("snowfall"), wind_gusts_10m: cut("wind_gusts_10m") } },
+      wx: { elevation: r.wx.elevation, hourly: { time: cut("time"), apparent_temperature: cut("apparent_temperature"), temperature_2m: cut("temperature_2m"), precipitation: cut("precipitation"), snowfall: cut("snowfall"), wind_gusts_10m: cut("wind_gusts_10m"), is_day: cut("is_day") } },
+      obs: obs && { label: obs.label, km: obs.km, alt: obs.alt, t: obs.t, wind: obs.wind, gust: obs.gust, snow: obs.snow, time: obs.time, source: obs.source },
       res: { level: res.level, hazards: res.hazards, timeline: res.timeline },
       hydro: hydroNow,
       messages

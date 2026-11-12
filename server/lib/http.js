@@ -1,12 +1,12 @@
 // fetch con timeout e tentativi ripetuti
 const UA = "MeteoRotte/0.2 (+https://github.com/; allerte umanitarie)";
-async function get(url, { tries = 3, timeout = 30000, type = "json" } = {}) {
+async function get(url, { tries = 3, timeout = 30000, type = "json", headers = {} } = {}) {
   let err;
   for (let i = 0; i < tries; i++) {
     const ctl = new AbortController();
     const to = setTimeout(() => ctl.abort(), timeout);
     try {
-      const r = await fetch(url, { signal: ctl.signal, headers: { "User-Agent": UA } });
+      const r = await fetch(url, { signal: ctl.signal, headers: Object.assign({ "User-Agent": UA }, headers) });
       if (!r.ok) throw new Error(`HTTP ${r.status} ${url.split("?")[0]}`);
       return type === "json" ? await r.json() : await r.text();
     } catch (e) {

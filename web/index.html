@@ -61,6 +61,7 @@
   .mbox { background:#fff; border-radius:12px; padding:16px 18px; max-width:620px; max-height:92vh; overflow:auto; font-size:14px; line-height:1.45; }
   .mbox h2 { margin:0 0 6px; font-size:18px; } .mbox ul { padding-left:18px; margin:6px 0; } .mbox li { margin-bottom:6px; }
   .mbox .en, .mbox .src { font-size:12px; color:var(--muted); }
+  .fact { font-size:12.5px; color:#334155; margin:2px 0; } .fact span { color:var(--muted); }
   svg.spark { width:100%; height:90px; display:block; }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; }
@@ -71,22 +72,22 @@
 <body>
 <header>
   <h1>🛟 MeteoRotte</h1>
-  <span id="status">Caricamento…</span>
+  <span id="status" data-t="loading">Caricamento…</span>
   <span class="sp"></span>
-  <label style="font-size:13px">Lingua messaggio
+  <label style="font-size:13px"><span data-t="msgLang">Lingua messaggio</span>
     <select id="lang"></select>
   </label>
-  <button id="info">ⓘ Avvertenze</button>
-  <button id="refresh" title="Aggiorna dati">⟳ Aggiorna</button>
+  <button id="push" hidden>🔔</button>
+  <button id="info" data-t="info">ⓘ Avvertenze</button>
+  <button id="refresh" data-t="refresh">⟳ Aggiorna</button>
+  <select id="uilang" title="Interface language"></select>
 </header>
 <main>
   <aside>
     <div class="filters" id="filters"></div>
     <div id="detail"></div>
     <div id="list"></div>
-    <div class="warn" style="margin:12px">Prototipo sperimentale. Le allerte sono calcolate automaticamente da modelli
-      meteo e idrologici aperti e <b>non sostituiscono</b> le allerte ufficiali delle protezioni civili.
-      Le traduzioni sono bozze da validare con mediatori.</div>
+    <div class="warn" style="margin:12px" data-t="footer"></div>
   </aside>
   <div id="map"></div>
 </main>
@@ -95,6 +96,7 @@
 <script src="data/hotspots.js"></script>
 <script src="data/shelters.js"></script>
 <script src="data/aiuti.js"></script>
+<script src="js/ui-i18n.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/alerts.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>

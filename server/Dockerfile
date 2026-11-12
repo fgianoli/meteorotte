@@ -1,8 +1,10 @@
-# Immagine unica per worker e bot (cambia solo il comando). Nessuna dipendenza npm.
+# Immagine unica per worker, bot e push (cambia solo il comando).
 FROM node:22-alpine
 WORKDIR /app
 COPY web/js/alerts.js web/js/i18n.js web/data/hotspots.js ./shared/
-COPY server/package.json server/worker.js server/bot.js ./
+COPY server/package.json ./
+RUN npm install --omit=dev --no-audit --no-fund
+COPY server/worker.js server/bot.js server/push.js ./
 COPY server/lib ./lib
 RUN mkdir -p /data/public /data/private && chown -R node:node /data
 USER node

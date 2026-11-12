@@ -23,6 +23,7 @@ inoltrare un sottodominio (es. `meteorotte.studiogis.eu`) alla porta 8080, con H
 |---|---|
 | `worker` | due cicli: ogni `FAST_MIN` minuti (default 5) idrometri Hub'Eau e allerte MeteoAlarm; ogni `INTERVAL_MIN` minuti (default 60) i modelli (Open-Meteo, GloFAS, bollettini valanghe), che non cambiano più spesso. A ogni giro ricalcola le allerte e pubblica i file. Se una fonte non risponde la segnala e prosegue; senza Open-Meteo tiene i dati precedenti e riprova dopo 10 minuti |
 | `web` | nginx: web app + `/api/` in sola lettura, nessun log degli accessi |
+| `push` | notifiche push del browser (tasto 🔔 nella web app): zona, lingua e livello arancione in su. Richiede HTTPS; su iPhone funziona solo con l'app aggiunta alla schermata Home |
 | `bot` | bot Telegram per gli operatori (profilo `bot`) |
 
 Due volumi separati: `public` (servito dal web) e `private` (iscrizioni al bot e storico, mai esposti).
@@ -76,6 +77,8 @@ python3 tools/snap_glofas.py                       # ricalcola le celle GloFAS s
 | Neve / valanghe (indicativo) | neve cumulata, neve ventata | 5 / 20 / 40 cm/24h, 20 / 40 / 70 cm/72h |
 | Valanghe (ufficiale) | bollettini AINEVA/Arpa Piemonte e Météo-France in CAAMLv6, dall'aggregatore EAWS (`static.avalanche.report`), alla quota del valico | grado 2 / 3 / 4–5 della scala europea |
 | Risalita del fiume (Roja) | idrometri Hub'Eau/Vigicrues a Breil, Saorge, Tenda, ogni 5–15 min | +20 / 40 / 70 cm in 1 h, oppure +30 / 60 / 100 cm in 3 h |
+| Idrometri ARPAL (Roja a Ventimiglia, Bevera a Torri, Roja ad Airole) | portale OMIRL, serie a 15 minuti | soglie ufficiali arancione / rossa, oppure velocità di risalita |
+| Idrometri ARSO (Soča a Solkan per Gorizia, Kolpa a Sodevci, Petrina, Metlika) | ultimo valore di portata | le tre soglie ufficiali di piena |
 | Allerte ufficiali | MeteoAlarm (CAP delle protezioni civili nazionali) | colore dell'allerta; l'evento viene tradotto nel consiglio pratico corrispondente |
 
 Le soglie sono più basse di quelle delle protezioni civili perché pensate per persone senza riparo: vanno tarate con chi lavora sul posto.
@@ -99,6 +102,11 @@ nginx/default.conf
 tools/snap_glofas.py    aggancia ogni punto fluviale alla cella GloFAS sull'asta principale
 ```
 
+## Dati mostrati senza generare allerte
+
+- **Stazione meteo più vicina** (entro 25 km): temperatura, vento e neve al suolo misurati. Reti collegate: ARSO (Slovenia, copre anche Carso e Gorizia), DHMZ (Croazia, poche stazioni), ARPAL (Liguria, solo temperatura).
+- **Ore di buio**, dalle previsioni orarie.
+
 ## Limiti noti (da leggere)
 
 - **Roja: GloFAS non lo vede.** La cella più vicina ha portate di circa 1 m³/s: il bacino è troppo piccolo per la griglia a 0,05°.
@@ -106,6 +114,11 @@ tools/snap_glofas.py    aggancia ogni punto fluviale alla cella GloFAS sull'asta
   (Hub'Eau). Mancano ancora gli idrometri ARPAL sul tratto italiano. Le soglie di risalita vanno tarate sulle piene storiche.
 - **Aree MeteoAlarm**: un'area compare nel feed solo quando ha un'allerta attiva. Alcuni nomi (Serbia, Grecia, Tuzla) sono stime
   da verificare il primo giorno in cui risultano in allerta.
+- **Stazioni meteo mancanti**: Piemonte (Arpa Piemonte pubblica un'API, ma ho trovato solo i dati giornalieri), Francia (Météo-France richiede una chiave gratuita da registrare su portail-api.meteofrance.fr), Friuli Venezia Giulia, Bosnia, Serbia, Bulgaria, Grecia.
+- **Fulmini in tempo reale**: non c'è una fonte aperta utilizzabile (Blitzortung vieta il riuso senza accordo). Restano le previsioni di temporale e le allerte MeteoAlarm.
+- **OMIRL (ARPAL)**: è l'interfaccia del portale pubblico, non un'API documentata: può cambiare senza preavviso e le condizioni di riuso vanno chieste ad ARPAL.
+- **Notifiche push**: registrazione e controlli provati; la consegna reale va provata su un telefono con il sito in HTTPS.
+- **Interfaccia** in italiano, inglese e francese; note dei punti e dettagli tecnici restano in italiano.
 - **Rilasci delle dighe** (impianti idroelettrici in Val Roja, Isonzo, Drina): non sono nei dati aperti. Serve un accordo con i gestori.
 - **Valanghe**: il worker legge i bollettini ufficiali per le micro-regioni EAWS dei valichi (IT-21-TO-03 Alpi Graie/Val di Susa, FR-13 Briançonnais). Fuori stagione (di solito fino a dicembre) i bollettini non ci sono e resta solo l'indicatore ricavato dalla neve. Per aggiungere altre zone basta indicare nel punto le micro-regioni (`eaws`) e la quota del valico (`quota`). Le altitudini "treeline" sono considerate 2000 m. Croazia e Bosnia non fanno parte di EAWS. Solo in modalità server.
 - **Coordinate** dei punti e celle GloFAS: approssimative, da verificare con le associazioni.

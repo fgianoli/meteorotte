@@ -1,0 +1,72 @@
+// Testi dell'interfaccia (per gli operatori): italiano, inglese, francese. I messaggi di allerta stanno in i18n.js.
+(function () {
+  const UI = {
+    it: { loading: "Caricamento…", msgLang: "Lingua messaggio", refresh: "⟳ Aggiorna", info: "ⓘ Avvertenze", all: "Tutte", noData: "Nessun dato.",
+      lvl0: "nessuna allerta", lvl1: "giallo", lvl2: "arancione", lvl3: "rosso", next72: "prossime 72 h",
+      hz_official: "Allerta ufficiale (MeteoAlarm)", hz_flood: "Piena / piena improvvisa", hz_rain: "Pioggia intensa", hz_cold: "Freddo / ipotermia", hz_heat: "Caldo estremo", hz_snow: "Neve / valanghe", hz_wind: "Vento / temporali",
+      downloading: "Scarico previsioni…", server: "Server · aggiornato alle", direct: "Diretto · aggiornato alle", missing: "non disponibili", offline: "⚠️ Offline – dati del", failed: "⚠️ Impossibile scaricare i dati",
+      emergency: "Emergenze", from: "da", none72: "Nessuna soglia superata nelle prossime 72 h", copy: "Copia messaggio", copyAll: "Copia in tutte le lingue", poster: "🖨 Cartello", official: "Allerte ufficiali:",
+      copied: "Copiato ✓", copyFail: "Copia non riuscita: seleziona il testo a mano", draft: "Traduzione non ancora validata da un madrelingua: non inoltrarla senza averla fatta controllare.",
+      tl: "Prossime 72 ore", tlSpan: "adesso → fra 3 giorni", print: "Stampa", close: "✕ Chiudi", updated: "Aggiornato", posterNote: "MeteoRotte · avviso automatico, non sostituisce le allerte ufficiali", draftShort: "⚠️ Traduzione non validata",
+      radar: "Radar pioggia (ultime 2 h)", wind: "Vento attuale", trails: "Sentieri segnati (estivi)", shelters: "Bivacchi e rifugi", aid: "Punti di aiuto",
+      darkNow: "È buio", darkFrom: "Buio dalle", until: "fino alle", measured: "Misurato a", threshold: "soglie",
+      pushOn: "Notifiche attive", pushOff: "Attiva notifiche", pushDenied: "Notifiche bloccate dal browser", pushErr: "Notifiche non disponibili",
+      footer: "Prototipo sperimentale. Le allerte sono calcolate automaticamente da dati aperti e <b>non sostituiscono</b> le allerte ufficiali. Le traduzioni sono bozze da validare.",
+      discTitle: "Avvertenze", discOk: "Ho capito",
+      disc: ["<b>Non è un'allerta ufficiale.</b> MeteoRotte è un prototipo sperimentale e non è un servizio di protezione civile. Valgono sempre le allerte e le indicazioni delle autorità.",
+        "<b>Verde non significa sicuro.</b> Le allerte sono calcolate in automatico da modelli e dati aperti: possono esserci falsi allarmi e pericoli non segnalati (per esempio rilasci di dighe, temporali locali, valanghe).",
+        "<b>I dati possono essere in ritardo o mancare.</b> Controlla sempre l'ora di aggiornamento in alto.",
+        "<b>Traduzioni:</b> non tutte sono state validate da madrelingua.",
+        "<b>Sentieri, bivacchi e rifugi</b> vengono da OpenStreetMap: possono essere sbagliati, chiusi o non percorribili. Con la neve i sentieri non si vedono e i rifugi possono essere chiusi.",
+        "<b>Privacy:</b> l'app non chiede la posizione, non ha account e non raccoglie dati personali.",
+        "<b>In pericolo chiama il 112</b>: è gratuito in tutta Europa."],
+      discSrc: "Nessuna garanzia sull'esattezza dei dati: chi li usa lo fa sotto la propria responsabilità." },
+    en: { loading: "Loading…", msgLang: "Message language", refresh: "⟳ Refresh", info: "ⓘ Disclaimer", all: "All", noData: "No data.",
+      lvl0: "no alert", lvl1: "yellow", lvl2: "orange", lvl3: "red", next72: "next 72 h",
+      hz_official: "Official warning (MeteoAlarm)", hz_flood: "Flood / flash flood", hz_rain: "Heavy rain", hz_cold: "Cold / hypothermia", hz_heat: "Extreme heat", hz_snow: "Snow / avalanches", hz_wind: "Wind / thunderstorms",
+      downloading: "Downloading forecasts…", server: "Server · updated at", direct: "Direct · updated at", missing: "unavailable", offline: "⚠️ Offline – data from", failed: "⚠️ Could not download data",
+      emergency: "Emergency", from: "from", none72: "No threshold exceeded in the next 72 h", copy: "Copy message", copyAll: "Copy in all languages", poster: "🖨 Poster", official: "Official warnings:",
+      copied: "Copied ✓", copyFail: "Copy failed: select the text manually", draft: "Translation not yet checked by a native speaker: do not forward it before having it checked.",
+      tl: "Next 72 hours", tlSpan: "now → in 3 days", print: "Print", close: "✕ Close", updated: "Updated", posterNote: "MeteoRotte · automatic notice, does not replace official warnings", draftShort: "⚠️ Unchecked translation",
+      radar: "Rain radar (last 2 h)", wind: "Current wind", trails: "Marked trails (summer)", shelters: "Bivouacs and huts", aid: "Help points",
+      darkNow: "It is dark", darkFrom: "Dark from", until: "until", measured: "Measured at", threshold: "thresholds",
+      pushOn: "Notifications on", pushOff: "Enable notifications", pushDenied: "Notifications blocked by the browser", pushErr: "Notifications unavailable",
+      footer: "Experimental prototype. Alerts are computed automatically from open data and <b>do not replace</b> official warnings. Translations are drafts to be checked.",
+      discTitle: "Disclaimer", discOk: "I understand",
+      disc: ["<b>This is not an official warning.</b> MeteoRotte is an experimental prototype, not a civil protection service. Official warnings and instructions from the authorities always prevail.",
+        "<b>Green does not mean safe.</b> Alerts are computed automatically from models and open data: there can be false alarms and unreported dangers (for example dam releases, local thunderstorms, avalanches).",
+        "<b>Data can be late or missing.</b> Always check the update time at the top.",
+        "<b>Translations:</b> not all have been checked by native speakers.",
+        "<b>Trails, bivouacs and huts</b> come from OpenStreetMap: they can be wrong, closed or impassable. With snow, trails are not visible and huts may be closed.",
+        "<b>Privacy:</b> the app does not ask for your location, has no accounts and collects no personal data.",
+        "<b>In danger call 112</b>: it is free across Europe."],
+      discSrc: "No guarantee of accuracy: use of the data is at your own responsibility." },
+    fr: { loading: "Chargement…", msgLang: "Langue du message", refresh: "⟳ Actualiser", info: "ⓘ Avertissements", all: "Toutes", noData: "Aucune donnée.",
+      lvl0: "aucune alerte", lvl1: "jaune", lvl2: "orange", lvl3: "rouge", next72: "72 prochaines heures",
+      hz_official: "Alerte officielle (MeteoAlarm)", hz_flood: "Crue / crue soudaine", hz_rain: "Fortes pluies", hz_cold: "Froid / hypothermie", hz_heat: "Chaleur extrême", hz_snow: "Neige / avalanches", hz_wind: "Vent / orages",
+      downloading: "Téléchargement des prévisions…", server: "Serveur · mis à jour à", direct: "Direct · mis à jour à", missing: "indisponibles", offline: "⚠️ Hors ligne – données du", failed: "⚠️ Impossible de télécharger les données",
+      emergency: "Urgences", from: "dès", none72: "Aucun seuil dépassé dans les 72 prochaines heures", copy: "Copier le message", copyAll: "Copier dans toutes les langues", poster: "🖨 Affiche", official: "Alertes officielles :",
+      copied: "Copié ✓", copyFail: "Copie impossible : sélectionnez le texte à la main", draft: "Traduction pas encore vérifiée par un locuteur natif : ne la transmettez pas sans l'avoir fait vérifier.",
+      tl: "72 prochaines heures", tlSpan: "maintenant → dans 3 jours", print: "Imprimer", close: "✕ Fermer", updated: "Mis à jour", posterNote: "MeteoRotte · avis automatique, ne remplace pas les alertes officielles", draftShort: "⚠️ Traduction non vérifiée",
+      radar: "Radar de pluie (2 dernières h)", wind: "Vent actuel", trails: "Sentiers balisés (été)", shelters: "Bivouacs et refuges", aid: "Points d'aide",
+      darkNow: "Il fait nuit", darkFrom: "Nuit dès", until: "jusqu'à", measured: "Mesuré à", threshold: "seuils",
+      pushOn: "Notifications activées", pushOff: "Activer les notifications", pushDenied: "Notifications bloquées par le navigateur", pushErr: "Notifications indisponibles",
+      footer: "Prototype expérimental. Les alertes sont calculées automatiquement à partir de données ouvertes et <b>ne remplacent pas</b> les alertes officielles. Les traductions sont des brouillons à vérifier.",
+      discTitle: "Avertissements", discOk: "J'ai compris",
+      disc: ["<b>Ce n'est pas une alerte officielle.</b> MeteoRotte est un prototype expérimental, pas un service de protection civile. Les alertes et consignes des autorités priment toujours.",
+        "<b>Vert ne veut pas dire sûr.</b> Les alertes sont calculées automatiquement à partir de modèles et de données ouvertes : il peut y avoir de fausses alertes et des dangers non signalés (lâchers de barrage, orages locaux, avalanches).",
+        "<b>Les données peuvent être en retard ou manquer.</b> Vérifiez toujours l'heure de mise à jour en haut.",
+        "<b>Traductions :</b> toutes n'ont pas été vérifiées par des locuteurs natifs.",
+        "<b>Sentiers, bivouacs et refuges</b> viennent d'OpenStreetMap : ils peuvent être erronés, fermés ou impraticables. Sous la neige les sentiers ne sont pas visibles et les refuges peuvent être fermés.",
+        "<b>Vie privée :</b> l'application ne demande pas la position, n'a pas de comptes et ne collecte aucune donnée personnelle.",
+        "<b>En danger, appelez le 112</b> : c'est gratuit dans toute l'Europe."],
+      discSrc: "Aucune garantie d'exactitude : l'utilisation des données se fait sous votre responsabilité." }
+  };
+  let lang = "it";
+  try { lang = localStorage.getItem("meteorotte-ui") || (navigator.language || "it").slice(0, 2); } catch (e) {}
+  if (!UI[lang]) lang = "en";
+  window.UI_LANG = lang;
+  window.UI_LANGS = Object.keys(UI);
+  window.LOCALE = { it: "it-IT", en: "en-GB", fr: "fr-FR" }[lang];
+  window.T = (k) => (UI[lang][k] != null ? UI[lang][k] : UI.it[k] != null ? UI.it[k] : k);
+})();

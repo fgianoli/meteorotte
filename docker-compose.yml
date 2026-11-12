@@ -27,6 +27,16 @@ services:
       start_period: 5m
     restart: unless-stopped
 
+  push:
+    image: meteorotte-server
+    command: ["node", "push.js"]
+    env_file: .env
+    volumes:
+      - public:/data/public:ro
+      - private:/data/private
+    depends_on: [worker]
+    restart: unless-stopped
+
   bot:
     image: meteorotte-server
     command: ["node", "bot.js"]

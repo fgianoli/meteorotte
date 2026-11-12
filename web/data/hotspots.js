@@ -4,6 +4,7 @@
 // meteoalarm: feed nazionale e nomi delle aree MeteoAlarm (i nomi compaiono nel feed solo quando c'è un'allerta: da verificare)
 // hubeau: stazioni idrometriche francesi in tempo reale (Hub'Eau / Vigicrues): Roya a Breil, Saorge, Tenda
 // eaws: micro-regioni EAWS dei bollettini valanghe (IT-21 = AINEVA/Arpa Piemonte, FR = Météo-France); quota: altitudine del valico percorso
+// omirl: idrometri ARPAL sul Roja italiano (Ventimiglia Ponte Aniante, Torri, Airole) con soglie ufficiali; arso: idrometri sloveni (Soča a Solkan, Kolpa) con soglie di piena
 // upstream: punti a monte nel bacino (per la pioggia che arriva dall'alto e per le piene improvvise)
 window.LINKS = {
   IT: [["Protezione Civile", "https://www.protezionecivile.gov.it"], ["Allerta Liguria", "https://allertaliguria.regione.liguria.it"], ["Arpa Piemonte", "https://www.arpa.piemonte.it"], ["Protezione Civile FVG", "https://www.protezionecivile.fvg.it"], ["Bollettini valanghe AINEVA", "https://bollettini.aineva.it"]],
@@ -20,7 +21,7 @@ window.EMERGENCY = { IT: "112", FR: "112", SI: "112", HR: "112", BA: "112 / 124 
 
 window.HOTSPOTS = [
   // --- Liguria / Alpi Marittime
-  { id: "ventimiglia-roja", meteoalarm: { feed: "italy", aree: ["Liguria"] }, hubeau: ["Y662000301", "Y662000401", "Y660000201"], nome: "Ventimiglia – alveo del Roja", regione: "Liguria / Alpi Marittime", paese: "IT", tipo: "fiume", lat: 43.7905, lon: 7.6075, flood: false,
+  { id: "ventimiglia-roja", omirl: ["XXMPA", "TORRI", "AIROL"], meteoalarm: { feed: "italy", aree: ["Liguria"] }, hubeau: ["Y662000301", "Y662000401", "Y660000201"], nome: "Ventimiglia – alveo del Roja", regione: "Liguria / Alpi Marittime", paese: "IT", tipo: "fiume", lat: 43.7905, lon: 7.6075, flood: false,
     upstream: [[43.937, 7.514], [44.060, 7.590]], note: "Accampamenti sotto i ponti e nel letto del fiume. Piene improvvise da piogge sulla Val Roja francese." },
   { id: "grimaldi", meteoalarm: { feed: "italy", aree: ["Liguria"] }, nome: "Grimaldi – sentiero del «Passo della morte»", regione: "Liguria / Alpi Marittime", paese: "IT", tipo: "montagna", lat: 43.788, lon: 7.539, note: "Sentiero ripido verso Mentone; pericoloso con pioggia e di notte." },
   { id: "breil-roya", meteoalarm: { feed: "france", aree: ["Alpes-Maritimes"] }, hubeau: ["Y662000301", "Y662000401", "Y660000201"], nome: "Breil-sur-Roya – Val Roja", regione: "Liguria / Alpi Marittime", paese: "FR", tipo: "fiume", lat: 43.937, lon: 7.514, flood: false, upstream: [[44.060, 7.590]], note: "Valle colpita dalla tempesta Alex (2020)." },
@@ -33,10 +34,10 @@ window.HOTSPOTS = [
   { id: "basovizza", meteoalarm: { feed: "italy", aree: ["Friuli Venezia Giulia"] }, nome: "Carso – Basovizza / Draga", regione: "Carso / Friuli Venezia Giulia", paese: "IT", tipo: "bosco", lat: 45.630, lon: 13.860, note: "Arrivi a piedi dalla Slovenia attraverso il bosco; bora molto forte in inverno." },
   { id: "fernetti", meteoalarm: { feed: "italy", aree: ["Friuli Venezia Giulia"] }, nome: "Carso – Fernetti / Monrupino", regione: "Carso / Friuli Venezia Giulia", paese: "IT", tipo: "bosco", lat: 45.703, lon: 13.795, note: "Altopiano esposto alla bora." },
   { id: "trieste", meteoalarm: { feed: "italy", aree: ["Friuli Venezia Giulia"] }, nome: "Trieste – piazza Libertà", regione: "Carso / Friuli Venezia Giulia", paese: "IT", tipo: "urbano", lat: 45.657, lon: 13.773, note: "Persone che dormono all'aperto vicino alla stazione." },
-  { id: "gorizia-isonzo", meteoalarm: { feed: "italy", aree: ["Friuli Venezia Giulia"] }, nome: "Gorizia – Isonzo", regione: "Carso / Friuli Venezia Giulia", paese: "IT", tipo: "fiume", lat: 45.940, lon: 13.610, flood: [45.94, 13.51], upstream: [[46.185, 13.735], [46.335, 13.555]], note: "Isonzo soggetto a piene rapide." },
+  { id: "gorizia-isonzo", arso: ["8180"], meteoalarm: { feed: "italy", aree: ["Friuli Venezia Giulia"] }, nome: "Gorizia – Isonzo", regione: "Carso / Friuli Venezia Giulia", paese: "IT", tipo: "fiume", lat: 45.940, lon: 13.610, flood: [45.94, 13.51], upstream: [[46.185, 13.735], [46.335, 13.555]], note: "Isonzo soggetto a piene rapide." },
   // --- Slovenia / Croazia
-  { id: "kolpa-vinica", meteoalarm: { feed: "slovenia", aree: ["Kolpa", "Slovenia / South-East"] }, nome: "Kolpa/Kupa – Vinica", regione: "Slovenia / Croazia", paese: "SI", tipo: "fiume", lat: 45.455, lon: 15.250, flood: [45.555, 15.25], upstream: [[45.480, 14.840]], note: "Confine fluviale: annegamenti durante gli attraversamenti." },
-  { id: "kolpa-metlika", meteoalarm: { feed: "slovenia", aree: ["Kolpa", "Slovenia / South-East"] }, nome: "Kolpa/Kupa – Metlika", regione: "Slovenia / Croazia", paese: "SI", tipo: "fiume", lat: 45.645, lon: 15.315, flood: [45.645, 15.415], upstream: [[45.455, 15.250], [45.480, 14.840]], note: "Confine fluviale." },
+  { id: "kolpa-vinica", arso: ["4828", "4820"], meteoalarm: { feed: "slovenia", aree: ["Kolpa", "Slovenia / South-East"] }, nome: "Kolpa/Kupa – Vinica", regione: "Slovenia / Croazia", paese: "SI", tipo: "fiume", lat: 45.455, lon: 15.250, flood: [45.555, 15.25], upstream: [[45.480, 14.840]], note: "Confine fluviale: annegamenti durante gli attraversamenti." },
+  { id: "kolpa-metlika", arso: ["4860"], meteoalarm: { feed: "slovenia", aree: ["Kolpa", "Slovenia / South-East"] }, nome: "Kolpa/Kupa – Metlika", regione: "Slovenia / Croazia", paese: "SI", tipo: "fiume", lat: 45.645, lon: 15.315, flood: [45.645, 15.415], upstream: [[45.455, 15.250], [45.480, 14.840]], note: "Confine fluviale." },
   { id: "gorski-kotar", meteoalarm: { feed: "croatia", aree: ["Primorsko-goranska"] }, nome: "Gorski kotar", regione: "Slovenia / Croazia", paese: "HR", tipo: "bosco", lat: 45.420, lon: 14.620, note: "Foreste in quota, freddo e neve precoci." },
   { id: "korana", meteoalarm: { feed: "croatia", aree: ["Karlovačka"] }, nome: "Korana – Slunj / Rakovica", regione: "Slovenia / Croazia", paese: "HR", tipo: "fiume", lat: 45.115, lon: 15.590, flood: [45.215, 15.49], upstream: [[44.880, 15.620]], note: "Area di attraversamento dopo il confine bosniaco." },
   // --- Bosnia-Erzegovina
