@@ -1,0 +1,34 @@
+"""Scarica da OpenStreetMap (Overpass) bivacchi, rifugi e ripari entro RADIUS km dai punti critici
+e scrive web/data/shelters.js. Da rilanciare ogni tanto: python3 tools/fetch_osm.py"""
+import json, re, sys, time, urllib.request, urllib.parse
+RADIUS = 15000
+src = open("web/data/hotspots.js", encoding="utf-8").read()
+pts = [(float(a), float(b)) for a, b in re.findall(r'tipo: "[a-z]+", lat: ([\d.]+), lon: ([\d.]+)', src)]
+URLS = ["https://overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
+data = {"elements": []}
+for la, lo in pts:  # una richiesta per punto: le query grandi vanno in timeout
+    q = f'[out:json][timeout:60];(nwr["tourism"~"^(alpine_hut|wilderness_hut)$"](around:{RADIUS},{la},{lo});nwr["amenity"="shelter"]["shelter_type"~"^(basic_hut|weather_shelter|lean_to)$"](around:{RADIUS},{la},{lo}););out center tags;'
+    ok = False
+    for url in URLS * 2:
+        try:
+            req = urllib.request.Request(url, data=urllib.parse.urlencode({"data": q}).encode(), headers={"User-Agent": "MeteoRotte/0.4"})
+            data["elements"] += json.load(urllib.request.urlopen(req, timeout=90))["elements"]; ok = True; break
+        except Exception as e:
+            print("errore", la, lo, url.split("/")[2], e, file=sys.stderr); time.sleep(2)
+    if not ok: sys.exit("Overpass non raggiungibile per %s,%s: file non aggiornato" % (la, lo))
+    time.sleep(1)
+out, seen = [], set()
+for e in data["elements"]:
+    t = e.get("tags", {}); la = e.get("lat") or e.get("center", {}).get("lat"); lo = e.get("lon") or e.get("center", {}).get("lon")
+    if la is None or t.get("access") in ("private", "no"): continue
+    kind = "rifugio" if t.get("tourism") == "alpine_hut" else "bivacco" if t.get("tourism") == "wilderness_hut" else "riparo"
+    key = (round(la, 4), round(lo, 4))
+    if key in seen: continue
+    seen.add(key)
+    ele = re.match(r"-?\d+", t.get("ele", "") or "")
+    out.append({"n": t.get("name", ""), "k": kind, "lat": round(la, 5), "lon": round(lo, 5), "q": int(ele.group()) if ele else None})
+out.sort(key=lambda x: (x["k"], x["n"]))
+open("web/data/shelters.js", "w", encoding="utf-8").write(
+    "// Bivacchi, rifugi e ripari da OpenStreetMap (© OpenStreetMap contributors, ODbL). Generato da tools/fetch_osm.py il %s\nwindow.SHELTERS = %s;\n"
+    % (time.strftime("%Y-%m-%d"), json.dumps(out, ensure_ascii=False, separators=(",", ":"))))
+from collections import Counter; print(len(out), Counter(x["k"] for x in out))

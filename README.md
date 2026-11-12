@@ -21,7 +21,7 @@ inoltrare un sottodominio (es. `meteorotte.studiogis.eu`) alla porta 8080, con H
 
 | Servizio | Cosa fa |
 |---|---|
-| `worker` | ogni `INTERVAL_MIN` minuti scarica Open-Meteo, GloFAS, Hub'Eau e MeteoAlarm, calcola le allerte e pubblica i file. Se una fonte non risponde la segnala e prosegue; senza Open-Meteo tiene i dati precedenti e riprova dopo 10 minuti |
+| `worker` | due cicli: ogni `FAST_MIN` minuti (default 5) idrometri Hub'Eau e allerte MeteoAlarm; ogni `INTERVAL_MIN` minuti (default 60) i modelli (Open-Meteo, GloFAS, bollettini valanghe), che non cambiano più spesso. A ogni giro ricalcola le allerte e pubblica i file. Se una fonte non risponde la segnala e prosegue; senza Open-Meteo tiene i dati precedenti e riprova dopo 10 minuti |
 | `web` | nginx: web app + `/api/` in sola lettura, nessun log degli accessi |
 | `bot` | bot Telegram per gli operatori (profilo `bot`) |
 
@@ -122,9 +122,24 @@ tools/snap_glofas.py    aggancia ogni punto fluviale alla cella GloFAS sull'asta
 4. **Livello cartografico statico**: alvei e zone allagabili (PGRA, ISPRA), pendii valanghivi, ripari e punti d'acqua, in PMTiles su studiogis.eu.
 5. **Canale per le persone in transito**, solo dopo la validazione: canali Telegram/WhatsApp gestiti dalle associazioni, schermi nei centri, cartelli con QR.
 
+## Avvertenze
+
+MeteoRotte è un prototipo sperimentale, fornito senza alcuna garanzia. Non è un servizio di protezione civile e non emette allerte ufficiali.
+Le allerte sono calcolate in automatico: possono esserci falsi allarmi e pericoli non segnalati; l'assenza di allerta non significa sicurezza.
+Le stesse avvertenze compaiono al primo accesso alla web app, nel bot e in ogni file CAP.
+
+Sulla mappa: bivacchi, rifugi e ripari entro 15 km dai punti (OpenStreetMap, `tools/fetch_osm.py`) e sentieri segnati (Waymarked Trails).
+`web/data/aiuti.js` è predisposto per i punti di aiuto, da compilare solo con luoghi confermati dalle associazioni.
+
 ## Principi
 
 Nessuna geolocalizzazione degli utenti, nessun account, nessun log di accesso conservato. I messaggi parlano di luoghi e di comportamenti sicuri, non di percorsi.
 Ogni scheda rimanda alle allerte ufficiali, che restano prevalenti.
 
 Dati: © OpenStreetMap · Open-Meteo (ECMWF, DWD, Météo-France) · Copernicus Emergency Management Service – GloFAS · RainViewer.
+
+## Licenza
+
+- **Codice**: licenza MIT (vedi `LICENSE`).
+- **Contenuti propri** (elenco dei punti critici, soglie, messaggi e traduzioni, documentazione): Creative Commons Attribuzione 4.0 (CC BY 4.0).
+- **Dati di terzi**: restano sotto le loro licenze. In particolare `web/data/shelters.js` deriva da OpenStreetMap ed è sotto ODbL; i dati meteo e le allerte seguono le condizioni di Open-Meteo, Copernicus, MeteoAlarm, Hub'Eau, EAWS e RainViewer.

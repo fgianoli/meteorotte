@@ -73,6 +73,7 @@
     const T = THRESHOLDS;
     const isRiver = site.tipo === "fiume";
     const isMountain = site.tipo === "montagna" || (wx.elevation || 0) >= 1200;
+    const timeline = [];
     const srcs = [h].concat((upstream || []).map((u) => u.hourly));
 
     for (let i = s; i < e; i++) {
@@ -80,18 +81,21 @@
       const app = num(h.apparent_temperature[i]);
       const temp = num(h.temperature_2m[i]);
       const pr = num(h.precipitation[i]) || 0;
+      let hl = 0;
 
       if (app !== null) {
         let lc = levelLE(app, T.coldApparent);
         if (temp !== null && temp <= T.wetCold.temp && pr >= T.wetCold.precip) lc = Math.max(lc, 1);
         t.update("cold", lc, time, app, "°C perc.", "modello meteo");
         t.update("heat", levelGE(app, T.heatApparent), time, app, "°C perc.", "modello meteo");
+        hl = Math.max(hl, lc, levelGE(app, T.heatApparent));
       }
 
       const g = num(h.wind_gusts_10m[i]);
       if (g !== null) t.update("wind", levelGE(g, T.gust), time, g, "km/h raffiche", "modello meteo");
       const wc = num(h.weather_code[i]);
       if (wc !== null && wc >= 95) t.update("wind", 2, time, g || 0, "temporale", "modello meteo");
+      hl = Math.max(hl, g !== null ? levelGE(g, T.gust) : 0, wc !== null && wc >= 95 ? 2 : 0);
 
       // Pioggia intensa: per i fiumi conta anche il bacino a monte (piene improvvise).
       const rainSrcs = isRiver ? srcs : [h];
@@ -103,6 +107,7 @@
       }
       const lr = Math.max(levelGE(r1, T.rain1h), levelGE(r24, T.rain24h));
       if (lr) t.update(isRiver ? "flood" : "rain", lr, time, Math.round(r24), "mm/24h", isRiver ? "pioggia sul bacino" : "modello meteo");
+      hl = Math.max(hl, lr);
 
       if (isMountain && h.snowfall) {
         const s24 = rollingSum(h.snowfall, i, 24);
@@ -110,7 +115,9 @@
         let ls = Math.max(levelGE(s24, T.snow24h), levelGE(s72, T.snow72hAvalanche));
         if (ls && s24 >= 10 && (g || 0) >= 50) ls = Math.min(3, ls + 1); // neve ventata
         t.update("snow", ls, time, Math.round(s72), "cm/72h", "modello meteo (indicatore valanghe)");
+        hl = Math.max(hl, ls);
       }
+      timeline.push(hl);
     }
 
     // Piena da GloFAS (Copernicus EMS) – solo come conferma, la risoluzione è grossolana per bacini piccoli.
@@ -130,7 +137,7 @@
     }
 
     const hazards = t.list();
-    return { level: hazards.reduce((m, x) => Math.max(m, x.level), 0), hazards, startIndex: s, endIndex: e };
+    return { level: hazards.reduce((m, x) => Math.max(m, x.level), 0), hazards, timeline, startIndex: s, endIndex: e };
   }
 
   // Aggiunge pericoli calcolati altrove (allerte ufficiali, idrometri) e ricalcola il livello.

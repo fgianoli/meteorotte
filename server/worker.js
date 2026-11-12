@@ -8,7 +8,9 @@ const { capAlert, atomFeed } = require("./lib/cap");
 const PUBLIC = process.env.PUBLIC_DIR || "/data/public";
 const PRIVATE = process.env.PRIVATE_DIR || "/data/private";
 const INTERVAL = (+process.env.INTERVAL_MIN || 60) * 60 * 1000;
-const RETRY = 10 * 60 * 1000;
+const FAST = Math.max(2, +process.env.FAST_MIN || 10) * 60 * 1000; // idrometri e allerte ufficiali
+const RETRY = Math.min(FAST, 10 * 60 * 1000);
+let cache = null; // previsioni dei modelli: cambiano al massimo ogni ora, non serve riscaricarle a ogni giro
 const CTX = {
   sender: process.env.CAP_SENDER || "meteorotte.local",
   senderName: process.env.CAP_SENDER_NAME || "MeteoRotte (prototipo)",
@@ -82,15 +84,18 @@ async function run() {
   const eawsProviders = [...new Set(H.flatMap((s) => (s.eaws || []).map((id) => (id.startsWith("FR") ? "FR" : id.split("-").slice(0, 2).join("-")))))];
   const today = process.env.EAWS_DATE || new Date(now * 1000 + 3600e3).toISOString().slice(0, 10);
 
+  const full = !cache || Date.now() - cache.t >= INTERVAL - 30000;
   const [wx, fl, hydro, aval, ...ma] = await Promise.all([
-    settle("open-meteo", src.forecast(points), status),
-    settle("glofas", src.glofas(rivers.map((s) => s.flood || [s.lat, s.lon])), status),
+    full ? settle("open-meteo", src.forecast(points), status) : cache.wx,
+    full ? settle("glofas", src.glofas(rivers.map((s) => s.flood || [s.lat, s.lon])), status) : cache.fl,
     settle("hubeau", src.hubeau(codes), status),
-    settle("valanghe-eaws", src.eaws(eawsProviders, today), status),
+    full ? settle("valanghe-eaws", src.eaws(eawsProviders, today), status) : cache.aval,
     ...feeds.map((f) => settle("meteoalarm-" + f, src.meteoalarm(f), status))
   ]);
   if (!wx) throw new Error("Open-Meteo non disponibile: mantengo i dati precedenti");
   if (aval && aval.missing.length) status["valanghe-eaws"] = aval.missing.length === eawsProviders.length ? "nessun bollettino oggi (fuori stagione?)" : "ok (mancano: " + aval.missing.join(", ") + ")";
+  if (full) cache = { t: Date.now(), wx, fl, aval, status: { "open-meteo": status["open-meteo"], glofas: status.glofas, "valanghe-eaws": status["valanghe-eaws"] } };
+  else Object.assign(status, cache.status);
   const warnings = Object.fromEntries(feeds.map((f, k) => [f, ma[k] || []]));
 
   const raw = {};
@@ -144,14 +149,14 @@ async function run() {
     sites.push({
       id: site.id,
       wx: { elevation: r.wx.elevation, hourly: { time: cut("time"), apparent_temperature: cut("apparent_temperature"), temperature_2m: cut("temperature_2m"), precipitation: cut("precipitation"), snowfall: cut("snowfall"), wind_gusts_10m: cut("wind_gusts_10m") } },
-      res: { level: res.level, hazards: res.hazards },
+      res: { level: res.level, hazards: res.hazards, timeline: res.timeline },
       hydro: hydroNow,
       messages
     });
   }
 
   const generated = Math.floor(now);
-  const out = { generated: new Date(generated * 1000).toISOString(), validUntil: new Date((generated + 2 * INTERVAL / 1000) * 1000).toISOString(), sources: status, sites };
+  const out = { generated: new Date(generated * 1000).toISOString(), modelsUpdated: new Date(cache.t).toISOString(), validUntil: new Date((generated + 2 * INTERVAL / 1000) * 1000).toISOString(), sources: status, sites };
   writeAtomic(path.join(PUBLIC, "alerts.json"), JSON.stringify(out));
 
   // CAP + Atom
@@ -166,15 +171,15 @@ async function run() {
   // storico per tarare le soglie (privato: non servito dal web)
   const day = out.generated.slice(0, 10);
   fs.mkdirSync(path.join(PRIVATE, "history"), { recursive: true });
-  fs.appendFileSync(path.join(PRIVATE, "history", day + ".jsonl"),
+  if (full) fs.appendFileSync(path.join(PRIVATE, "history", day + ".jsonl"),
     sites.map((x) => JSON.stringify({ t: out.generated, id: x.id, level: x.res.level, hz: x.res.hazards.map((z) => [z.type, z.level, z.value, z.source]) })).join("\n") + "\n");
 
-  log(`✓ ${sites.length} punti, ${active.length} in allerta`, JSON.stringify(status));
+  log(`✓ ${full ? "completo" : "rapido"} · ${sites.length} punti, ${active.length} in allerta`, JSON.stringify(status));
   return out;
 }
 
 async function loop() {
-  let wait = INTERVAL;
+  let wait = FAST;
   try { await run(); } catch (e) { log("✗", e.message); wait = RETRY; }
   if (process.env.RUN_ONCE) return;
   setTimeout(loop, wait);

@@ -17,7 +17,27 @@
 
   const radarLayer = L.layerGroup();
   const windLayer = L.layerGroup();
-  L.control.layers(null, { "Radar pioggia (ultime 2 h)": radarLayer, "Vento attuale (griglia)": windLayer }, { collapsed: false }).addTo(map);
+  // Sentieri segnati (Waymarked Trails, dati OSM) e ripari in quota (OSM, file statico generato da tools/fetch_osm.py)
+  const trailLayer = L.tileLayer("https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.85, attribution: "sentieri © waymarkedtrails.org (CC BY-SA)" });
+  const KIND = {
+    bivacco: ["⛺", "Bivacco: non custodito, di solito sempre aperto"],
+    rifugio: ["🏠", "Rifugio: in inverno può essere chiuso (a volte resta aperto un locale invernale)"],
+    riparo: ["🛖", "Riparo semplice"],
+    accoglienza: ["🛏️", "Accoglienza"], associazione: ["🤝", "Associazione"], cibo: ["🍲", "Cibo"], salute: ["⚕️", "Salute"]
+  };
+  function poi(lat, lon, kind, rows) {
+    const box = document.createElement("div");
+    rows.filter(Boolean).forEach((r, i) => { const d = document.createElement(i ? "div" : "b"); d.textContent = r; box.appendChild(d); });
+    return L.marker([lat, lon], { icon: L.divIcon({ className: "poi", html: (KIND[kind] || ["📍"])[0], iconSize: [24, 24], iconAnchor: [12, 12] }) }).bindPopup(box);
+  }
+  const shelterLayer = L.layerGroup();
+  (window.SHELTERS || []).forEach((s) => poi(s.lat, s.lon, s.k, [s.n || KIND[s.k][1].split(":")[0], KIND[s.k][1], s.q ? "Quota " + s.q + " m" : "", "Fonte: OpenStreetMap, da verificare"]).addTo(shelterLayer));
+  const aidLayer = L.layerGroup();
+  (window.AIUTI || []).forEach((a) => poi(a.lat, a.lon, a.tipo, [a.nome, (KIND[a.tipo] || [, a.tipo])[1], a.orari, a.contatto, a.verificato ? "Verificato il " + a.verificato : ""]).addTo(aidLayer));
+  const overlays = { "Radar pioggia (ultime 2 h)": radarLayer, "Vento attuale": windLayer, "Sentieri segnati (estivi)": trailLayer };
+  if ((window.SHELTERS || []).length) overlays["Bivacchi e rifugi"] = shelterLayer;
+  if ((window.AIUTI || []).length) { overlays["Punti di aiuto"] = aidLayer; aidLayer.addTo(map); }
+  L.control.layers(null, overlays, { collapsed: window.innerWidth < 800 }).addTo(map);
 
   const legend = L.control({ position: "bottomright" });
   legend.onAdd = () => {
@@ -100,14 +120,14 @@
     const hhmm = (t) => new Date(t).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
     try {
       const j = await loadServer();
-      state.fetchedAt = Date.parse(j.generated);
+      state.fetchedAt = Date.parse(j.generated); state.mode = "server";
       const ko = Object.entries(j.sources).filter(([, v]) => !/^(ok|nessun)/.test(v)).map(([k]) => k);
       $("#status").textContent = "Server · aggiornato alle " + hhmm(state.fetchedAt) + (ko.length ? " · ⚠️ non disponibili: " + ko.join(", ") : "");
       return render();
     } catch (e) { console.info("Server non disponibile, uso le API direttamente:", e.message); }
     try {
       const raw = await loadAll();
-      state.fetchedAt = Date.now();
+      state.fetchedAt = Date.now(); state.mode = "direct";
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: state.fetchedAt, raw })); } catch (e) {}
       compute(raw);
       $("#status").textContent = "Diretto · aggiornato alle " + hhmm(state.fetchedAt);
@@ -181,6 +201,34 @@
       <text x="${W - 2}" y="10" font-size="9" text-anchor="end" fill="#64748b">T percepita ${Math.round(Math.min(...T))}…${Math.round(Math.max(...T))}°C · pioggia max ${Math.max(...P).toFixed(1)} mm/h</text></svg>`;
   }
 
+  // Striscia colorata: livello di allerta ora per ora nelle prossime 72 ore (dai modelli meteo).
+  function timeline(x) {
+    const tl = x.res.timeline || [];
+    if (!tl.length) return "";
+    const t0 = x.wx.hourly.time[x.res.startIndex];
+    const cells = tl.map((l, i) => `<i style="background:${LEVEL_COLOR[l]}${new Date((t0 + i * 3600) * 1000).getHours() === 0 ? ";border-left:2px solid #0f172a" : ""}" title="${fmtTime(t0 + i * 3600)}"></i>`).join("");
+    return `<div class="tlh">Prossime 72 ore <span>adesso → fra 3 giorni</span></div><div class="tl">${cells}</div>`;
+  }
+
+  // Cartello a schermo intero da proiettare o stampare nei punti di accoglienza.
+  function showPoster(x) {
+    const lang = LANGS.find((l) => l.code === state.lang);
+    const lines = composeMessage(x.site, x.res, state.lang).split("\n");
+    let qr = "";
+    try { if (window.qrcode) { const q = window.qrcode(0, "M"); q.addData(location.origin + location.pathname); q.make(); qr = q.createSvgTag({ cellSize: 3, margin: 2 }); } } catch (e) {}
+    const el = document.createElement("div");
+    el.className = "poster";
+    el.innerHTML = `<div class="ph" style="background:${LEVEL_COLOR[x.res.level]};color:${x.res.level === 1 ? "#111" : "#fff"}"><span>${x.site.nome}</span>
+        <span class="noprint"><button class="btn ghost" id="pprint">Stampa</button> <button class="btn ghost" id="pclose">✕ Chiudi</button></span></div>
+      <div class="pb" dir="${lang.rtl ? "rtl" : "ltr"}" lang="${lang.code}"></div>
+      <div class="pf">${qr}<div>Aggiornato: ${new Date(state.fetchedAt).toLocaleString("it-IT")}<br>MeteoRotte · avviso automatico, non sostituisce le allerte ufficiali${lang.bozza ? "<br>⚠️ Traduzione non validata" : ""}</div></div>`;
+    const pb = el.querySelector(".pb");
+    lines.slice(1).forEach((ln) => { const p = document.createElement("p"); p.textContent = ln; pb.appendChild(p); });
+    document.body.appendChild(el);
+    el.querySelector("#pclose").onclick = () => el.remove();
+    el.querySelector("#pprint").onclick = () => { try { window.print(); } catch (e) {} };
+  }
+
   function renderDetail() {
     const d = $("#detail");
     const x = state.results[state.selected];
@@ -192,12 +240,13 @@
     const links = (LINKS[x.site.paese] || []).concat(LINKS.ALL).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join("");
     d.style.display = "block";
     d.innerHTML = `<h2>${x.site.nome}</h2><p class="note">${x.site.note || ""}<br>Emergenze: <b>${EMERGENCY[x.site.paese] || "112"}</b></p>
+      ${timeline(x)}
       ${sparkline(x)}
       ${(x.hydro || []).map((h) => `<div style="font-size:12px;color:#334155">💧 ${h.label}: ${(h.h_mm / 1000).toFixed(2)} m alle ${new Date(h.t * 1000).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</div>`).join("")}
       <table class="hzt">${rows}</table>
       <div class="msg" dir="${lang.rtl ? "rtl" : "ltr"}" lang="${lang.code}" id="msgbox"></div>
       ${lang.bozza ? `<div class="warn">⚠️ Traduzione in ${lang.label} non ancora validata da un madrelingua: non inoltrarla senza averla fatta controllare.</div>` : ""}
-      <div class="row"><button class="btn" id="copy">Copia messaggio</button><button class="btn ghost" id="copyall">Copia in tutte le lingue</button><span id="copied" style="font-size:12px;color:#16a34a"></span></div>
+      <div class="row"><button class="btn" id="copy">Copia messaggio</button><button class="btn ghost" id="copyall">Copia in tutte le lingue</button><button class="btn ghost" id="poster">🖨 Cartello</button><span id="copied" style="font-size:12px;color:#16a34a"></span></div>
       <div class="links">Allerte ufficiali: ${links}</div>`;
     $("#msgbox").textContent = msg;
     const copy = async (text) => {
@@ -205,6 +254,7 @@
       catch (e) { $("#copied").textContent = "Copia non riuscita: seleziona il testo a mano"; }
     };
     $("#copy").onclick = () => copy(msg);
+    $("#poster").onclick = () => showPoster(x);
     $("#copyall").onclick = () => copy(LANGS.map((l) => composeMessage(x.site, x.res, l.code)).join("\n\n— — —\n\n"));
   }
 
@@ -290,8 +340,32 @@
   }
   map.on("moveend", () => { clearTimeout(windTimer); windTimer = setTimeout(loadWind, 500); });
 
+  // ---------- avvertenze
+  function showDisclaimer() {
+    if (document.querySelector(".modal")) return;
+    const el = document.createElement("div");
+    el.className = "modal";
+    el.innerHTML = `<div class="mbox"><h2>Avvertenze</h2>
+      <ul>
+        <li><b>Non è un'allerta ufficiale.</b> MeteoRotte è un prototipo sperimentale e non è un servizio di protezione civile. Valgono sempre le allerte e le indicazioni delle autorità.</li>
+        <li><b>Verde non significa sicuro.</b> Le allerte sono calcolate in automatico da modelli e dati aperti: possono esserci falsi allarmi e pericoli non segnalati (per esempio rilasci di dighe, temporali locali, valanghe).</li>
+        <li><b>I dati possono essere in ritardo o mancare.</b> Controlla sempre l'ora di aggiornamento in alto.</li>
+        <li><b>Traduzioni:</b> non tutte sono state validate da madrelingua.</li>
+        <li><b>Sentieri, bivacchi e rifugi</b> vengono da OpenStreetMap: possono essere sbagliati, chiusi o non percorribili. Con la neve i sentieri non si vedono e i rifugi possono essere chiusi.</li>
+        <li><b>Privacy:</b> l'app non chiede la posizione, non ha account e non raccoglie dati personali.</li>
+        <li><b>In pericolo chiama il 112</b>: è gratuito in tutta Europa.</li>
+      </ul>
+      <p class="en">Experimental tool, not an official warning service. Green does not mean safe. In danger call 112. · Outil expérimental, pas une alerte officielle. Vert ne veut pas dire sûr. En danger, appelez le 112.</p>
+      <p class="src">Nessuna garanzia sull'esattezza dei dati: chi li usa lo fa sotto la propria responsabilità. Fonti: Open-Meteo (ECMWF, DWD, Météo-France), Copernicus EMS GloFAS, MeteoAlarm/EUMETNET, Hub'Eau, EAWS/AINEVA, RainViewer, © OpenStreetMap contributors (ODbL), Waymarked Trails.</p>
+      <button class="btn" id="mok">Ho capito</button></div>`;
+    document.body.appendChild(el);
+    el.querySelector("#mok").onclick = () => { try { localStorage.setItem("meteorotte-avvertenze", "1"); } catch (e) {} el.remove(); };
+  }
+  $("#info").onclick = showDisclaimer;
+  try { if (!localStorage.getItem("meteorotte-avvertenze")) showDisclaimer(); } catch (e) { showDisclaimer(); }
+
   // ---------- avvio
   refresh();
-  setInterval(refresh, 30 * 60 * 1000);
+  setInterval(() => { if (state.mode === "direct" && Date.now() - state.fetchedAt < 30 * 60e3) return; refresh(); }, 5 * 60 * 1000);
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

@@ -50,6 +50,7 @@ server.listen(0, async () => {
   const pub = path.join(tmp, "public");
   const j = JSON.parse(fs.readFileSync(path.join(pub, "alerts.json")));
   assert.strictEqual(j.sites.length, 22, "22 punti");
+  assert.strictEqual(j.sites[0].res.timeline.length, 72, "linea del tempo di 72 ore");
   assert.ok(j.sites.some((s) => s.res.level >= 2), "almeno un'allerta arancione (pioggia simulata)");
   assert.ok(Object.keys(j.sites[0].messages).length === 11, "11 lingue");
   const caps = fs.readdirSync(path.join(pub, "cap"));

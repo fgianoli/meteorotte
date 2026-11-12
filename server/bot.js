@@ -48,7 +48,7 @@ const HELP = `🛟 MeteoRotte – allerte per operatori
 /punto ventimiglia-roja – messaggio completo per un punto
 /stop – cancella la tua iscrizione
 
-Le allerte sono calcolate automaticamente e non sostituiscono quelle ufficiali.`;
+⚠️ Strumento sperimentale. Le allerte sono calcolate in automatico: possono esserci falsi allarmi e pericoli non segnalati. Nessuna allerta non significa sicuro. Valgono sempre le allerte ufficiali; in emergenza 112.`;
 
 function currentAlerts() { return readJSON(path.join(PUBLIC, "alerts.json"), null); }
 function siteOf(id) { return S.HOTSPOTS.find((s) => s.id === id); }
