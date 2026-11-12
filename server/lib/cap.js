@@ -2,7 +2,7 @@
 const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const capTime = (sec) => new Date(sec * 1000).toISOString().replace(/\.\d{3}Z$/, "+00:00");
 const SEVERITY = ["Minor", "Moderate", "Severe", "Extreme"];
-const LANG_TAG = { it: "it-IT", en: "en-GB", fr: "fr-FR", ar: "ar", fa: "fa", ps: "ps", ur: "ur", ti: "ti" };
+const LANG_TAG = { it: "it-IT", en: "en-GB", fr: "fr-FR", ar: "ar", fa: "fa", ps: "ps", ur: "ur", ti: "ti", wo: "wo", mnk: "mnk", ff: "ff" };
 const HZ_NAME = { official: "Allerta ufficiale", flood: "Piena", rain: "Pioggia intensa", cold: "Freddo", heat: "Caldo", snow: "Neve/valanghe", wind: "Vento/temporali" };
 
 function capAlert(entry, ctx) {

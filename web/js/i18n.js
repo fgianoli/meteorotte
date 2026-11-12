@@ -8,7 +8,11 @@ window.LANGS = [
   { code: "fa", label: "فارسی / دری", rtl: true },
   { code: "ps", label: "پښتو", rtl: true },
   { code: "ur", label: "اردو", rtl: true },
-  { code: "ti", label: "ትግርኛ", rtl: false }
+  { code: "ti", label: "ትግርኛ", rtl: false },
+  // bozza: true = traduzione automatica NON ancora validata da un madrelingua
+  { code: "wo", label: "Wolof", rtl: false, bozza: true },
+  { code: "mnk", label: "Mandinka", rtl: false, bozza: true },
+  { code: "ff", label: "Pulaar / Fulfulde", rtl: false, bozza: true }
 ];
 
 window.ICONS = { official: "📢", flood: "🌊", rain: "🌧️", cold: "🥶", heat: "🥵", snow: "🏔️", wind: "🌬️" };
@@ -23,7 +27,10 @@ window.MSG = {
     fa: "خطر سیل: آب رودخانه ممکن است ناگهان بالا بیاید. در بستر رودخانه یا زیر پل‌ها نخوابید و نمانید.",
     ps: "د سیلاب خطر: د سیند اوبه ښايي ناڅاپه پورته شي. د سیند په بستر کې یا د پلونو لاندې مه ویده کېږئ او مه پاتې کېږئ.",
     ur: "سیلاب کا خطرہ: دریا کا پانی اچانک بڑھ سکتا ہے۔ دریا کی تہہ میں یا پلوں کے نیچے نہ سوئیں اور نہ رکیں۔",
-    ti: "ሓደጋ ውሕጅ፦ ሩባ ብሃንደበት ክመልእ ይኽእል እዩ። ኣብ ውሽጢ ሩባ ወይ ኣብ ትሕቲ ድልድል ኣይትደቀሱ ኣይትጸንሑ።"
+    ti: "ሓደጋ ውሕጅ፦ ሩባ ብሃንደበት ክመልእ ይኽእል እዩ። ኣብ ውሽጢ ሩባ ወይ ኣብ ትሕቲ ድልድል ኣይትደቀሱ ኣይትጸንሑ።",
+    wo: "Musiba ndox: dex gi mën na yokku ci saasi. Bul nelaw, bul toog ci biir dex gi walla ci suufu pom yi.",
+    mnk: "Jiibaa masiiboo: baa si yele sainsain. Kana laa, kana tu baa kono waraŋ salo koto.",
+    ff: "Musiiba ndiyam: maayo ngo ina waawi ɓeydaade e sahaa gooto. Woto ɗaano, woto heddo nder maayo walla les pomuuji."
   },
   rain: {
     it: "Pioggia forte: sentieri scivolosi e torrenti in piena. Non attraversare corsi d'acqua, cerca un riparo.",
@@ -33,7 +40,10 @@ window.MSG = {
     fa: "باران شدید: مسیرها لغزنده و جوی‌ها پرآب است. از آب عبور نکنید، سرپناه پیدا کنید.",
     ps: "سخت باران: لارې ښوییدونکې دي او ویالې ډکې دي. له اوبو مه تېرېږئ، سرپناه ومومئ.",
     ur: "تیز بارش: راستے پھسلن والے اور ندیاں بھری ہوئی ہیں۔ پانی پار نہ کریں، پناہ تلاش کریں۔",
-    ti: "ብርቱዕ ዝናብ፦ መገድታት ዘንሸራትቱን ወሓይዝ ዝመልኡን እዮም። ማይ ኣይትሳገሩ፣ መዕቆቢ ድለዩ።"
+    ti: "ብርቱዕ ዝናብ፦ መገድታት ዘንሸራትቱን ወሓይዝ ዝመልኡን እዮም። ማይ ኣይትሳገሩ፣ መዕቆቢ ድለዩ።",
+    wo: "Taw bu bare: yoon yi dañuy tarxiis, ndox mi dafa bare. Bul jàll ndox mi, wutal fu nga làqu.",
+    mnk: "Sanjii baa: siloolu be tereŋ, jiyo siyaata. Kana jiyo teyi, maabodulaa ñini.",
+    ff: "Toɓo mawngo: laabi ɗii ina ndeeri, ndiyam ina heewi. Woto taƴ ndiyam, ɗaɓɓu ɗo suuɗoto-ɗaa."
   },
   cold: {
     it: "Freddo intenso: rischio ipotermia. Cerca un riparo, resta asciutto, non camminare da solo in montagna o nel bosco.",
@@ -43,7 +53,10 @@ window.MSG = {
     fa: "سرمای شدید: خطر هیپوترمی (سرمازدگی). سرپناه پیدا کنید، خشک بمانید، تنها در کوه یا جنگل راه نروید.",
     ps: "سخته یخني: د بدن د تودوخې د راټیټېدو خطر. سرپناه ومومئ، وچ پاتې شئ، په غرونو یا ځنګل کې یوازې مه ځئ.",
     ur: "شدید سردی: ہائپوتھرمیا کا خطرہ۔ پناہ تلاش کریں، خشک رہیں، پہاڑوں یا جنگل میں اکیلے نہ چلیں۔",
-    ti: "ብርቱዕ ቁሪ፦ ሓደጋ ምውራድ ሙቀት ኣካላት። መዕቆቢ ድለዩ፣ ደረቕ ኩኑ፣ ኣብ ጎቦ ወይ ዱር በይንኹም ኣይትኺዱ።"
+    ti: "ብርቱዕ ቁሪ፦ ሓደጋ ምውራድ ሙቀት ኣካላት። መዕቆቢ ድለዩ፣ ደረቕ ኩኑ፣ ኣብ ጎቦ ወይ ዱር በይንኹም ኣይትኺዱ።",
+    wo: "Sedd bu metti: mën na la faat. Wutal fu nga làqu, bul tooy, bul dox yaw rekk ci tund yi walla ci àll bi.",
+    mnk: "Neneba: a si moo faa. Maabodulaa ñini, kana sinaŋ, kana taama i kiliŋ konkoolu kaŋ waraŋ wulo kono.",
+    ff: "Jaangol mawngol: ina waawi warde neɗɗo. Ɗaɓɓu ɗo suuɗoto-ɗaa, woto soofu, woto yah aan tan e kaaƴe walla e ladde."
   },
   heat: {
     it: "Caldo estremo: rischio colpo di calore. Bevi acqua spesso, cerca l'ombra, evita di camminare nelle ore centrali.",
@@ -53,7 +66,10 @@ window.MSG = {
     fa: "گرمای شدید: خطر گرمازدگی. زیاد آب بنوشید، در سایه بمانید، در ساعات میانی روز راه نروید.",
     ps: "سخته ګرمي: د تودوخې د وهلو خطر. ډېرې اوبه وڅښئ، سیوری ومومئ، د غرمې په وخت کې مه ګرځئ.",
     ur: "شدید گرمی: لو لگنے کا خطرہ۔ بار بار پانی پئیں، سائے میں رہیں، دوپہر کے وقت چلنے سے بچیں۔",
-    ti: "ብርቱዕ ሃሩር፦ ሓደጋ ወቕዒ ጸሓይ። ብዙሕ ማይ ስተዩ፣ ጽላል ድለዩ፣ ኣብ ፍርቂ መዓልቲ ኣይትጓዓዙ።"
+    ti: "ብርቱዕ ሃሩር፦ ሓደጋ ወቕዒ ጸሓይ። ብዙሕ ማይ ስተዩ፣ ጽላል ድለዩ፣ ኣብ ፍርቂ መዓልቲ ኣይትጓዓዙ።",
+    wo: "Tàngaay bu metti: naanal ndox bu bare, toogal ci ker, bul dox ci digg bëccëg.",
+    mnk: "Kandiba: jii miŋ siiñaa jamaa, sii niiniyo koto, kana taama tilibuloo.",
+    ff: "Nguleeki mawki: yar ndiyam keewɗam, jooɗo e ɗowdi, woto yah hakkunde ñalawma."
   },
   snow: {
     it: "Neve e pericolo valanghe in quota: i sentieri dei valichi sono pericolosi. Non partire con la neve o di notte.",
@@ -63,7 +79,10 @@ window.MSG = {
     fa: "برف و خطر بهمن در ارتفاعات: مسیرهای گردنه‌ها خطرناک است. هنگام برف یا شب حرکت نکنید.",
     ps: "واوره او په لوړو سیمو کې د برفکوچ خطر: د غرنیو درو لارې خطرناکې دي. د واورې پر مهال یا د شپې مه روانېږئ.",
     ur: "برف اور بلندی پر برفانی تودے کا خطرہ: پہاڑی دروں کے راستے خطرناک ہیں۔ برف باری یا رات میں سفر شروع نہ کریں۔",
-    ti: "በረድን ሓደጋ ምንቁልቋል በረድን ኣብ ላዕሊ፦ መገድታት ጎቦታት ሓደገኛታት እዮም። ብበረድ ወይ ብለይቲ ኣይትብገሱ።"
+    ti: "በረድን ሓደጋ ምንቁልቋል በረድን ኣብ ላዕሊ፦ መገድታት ጎቦታት ሓደገኛታት እዮም። ብበረድ ወይ ብለይቲ ኣይትብገሱ።",
+    wo: "Neige (galaas) ak musiba ci tund yi: yoon yu tund yi wóoruñu. Bul dem su neige di wàcc walla ci guddi.",
+    mnk: "Neige (galaasi) aniŋ masiiboo konkoolu kaŋ: konkosiloolu maŋ kayira. Kana taa neige waatoo waraŋ suutoo.",
+    ff: "Neige (galaas) e musiiba e kaaƴe: laabi kaaƴe ina kulɓinii. Woto yah so neige ina saama walla jamma."
   },
   wind: {
     it: "Vento forte e temporali: pericolo di alberi e rami che cadono. Non accamparti nel bosco o vicino ai fiumi.",
@@ -73,7 +92,10 @@ window.MSG = {
     fa: "باد شدید و طوفان: خطر افتادن درخت و شاخه. در جنگل یا نزدیک رودخانه چادر نزنید.",
     ps: "تېز باد او تندر: د ونو او څانګو د غورځېدو خطر. په ځنګلونو کې یا سیندونو ته نږدې مه پاتې کېږئ.",
     ur: "تیز ہوا اور طوفان: درخت اور شاخیں گرنے کا خطرہ۔ جنگل میں یا دریا کے قریب کیمپ نہ لگائیں۔",
-    ti: "ብርቱዕ ንፋስን ማዕበልን፦ ሓደጋ ምውዳቕ ኣግራብን ጨናፍርን። ኣብ ዱር ወይ ጥቓ ሩባ ኣይትሕደሩ።"
+    ti: "ብርቱዕ ንፋስን ማዕበልን፦ ሓደጋ ምውዳቕ ኣግራብን ጨናፍርን። ኣብ ዱር ወይ ጥቓ ሩባ ኣይትሕደሩ።",
+    wo: "Ngelaw lu réy ak dënnu: garab yi mën nañu daanu. Bul fanaan ci àll bi walla ci wetu dex.",
+    mnk: "Foñoba aniŋ sankulukumoo: yiroolu si boyi. Kana laa wulo kono waraŋ baa daala.",
+    ff: "Henndu mawndu e digaali: leɗɗe ina mbaawi yande. Woto waal e ladde walla sara maayo."
   },
   official: {
     it: "Allerta meteo ufficiale in vigore in questa zona. Segui le indicazioni delle autorità e dei volontari.",
@@ -83,7 +105,10 @@ window.MSG = {
     fa: "هشدار رسمی هواشناسی در این منطقه فعال است. از راهنمایی‌های مقامات و داوطلبان پیروی کنید.",
     ps: "په دې سیمه کې د هوا رسمي خبرتیا روانه ده. د چارواکو او رضاکارانو لارښوونې ومنئ.",
     ur: "اس علاقے میں موسم کی سرکاری وارننگ نافذ ہے۔ حکام اور رضاکاروں کی ہدایات پر عمل کریں۔",
-    ti: "ኣብዚ ከባቢ ወግዓዊ ናይ ኣየር ሓበሬታ ሓደጋ ኣሎ። መምርሒ ሰበ-ስልጣንን ወለንተኛታትን ስዓቡ።"
+    ti: "ኣብዚ ከባቢ ወግዓዊ ናይ ኣየር ሓበሬታ ሓደጋ ኣሎ። መምርሒ ሰበ-ስልጣንን ወለንተኛታትን ስዓቡ።",
+    wo: "Nguur gi joxe na yégle musiba ci jawwu ji fii. Toppal li njiit yi ak ndimbalkat yi wax.",
+    mnk: "Mansakundaa ye waatoo masiiboo kibaaroo dii ñiŋ dulaa to. Ñaatonkoolu niŋ maakoyilaalu ye meŋ fo, wo bula.",
+    ff: "Laamu ngu rokkii habaru musiiba weeyo ɗoo. Rew ko hooreeɓe e wallooɓe mbiyi."
   },
   emergency: {
     it: "In pericolo? Chiama il {n}: è gratuito.",
@@ -93,7 +118,10 @@ window.MSG = {
     fa: "در خطر هستید؟ با {n} تماس بگیرید: رایگان است.",
     ps: "په خطر کې یاست؟ {n} ته زنګ ووهئ: وړیا دی.",
     ur: "خطرے میں ہیں؟ {n} پر کال کریں: یہ مفت ہے۔",
-    ti: "ኣብ ሓደጋ ዲኹም? ናብ {n} ደውሉ፦ ብናጻ እዩ።"
+    ti: "ኣብ ሓደጋ ዲኹም? ናብ {n} ደውሉ፦ ብናጻ እዩ።",
+    wo: "Yaa ngi ci musiba? Wootel {n}: du fey.",
+    mnk: "I be masiiboo kono? {n} kili: a maŋ joo soto.",
+    ff: "Aɗa e musiiba? Noddu {n}: yoɓetaake."
   },
   none: {
     it: "Nessuna allerta meteo prevista nelle prossime 72 ore. Resta comunque prudente.",
@@ -103,7 +131,10 @@ window.MSG = {
     fa: "در ۷۲ ساعت آینده هشدار هواشناسی پیش‌بینی نشده است. با این حال مراقب باشید.",
     ps: "په راتلونکو ۷۲ ساعتونو کې د هوا خبرتیا نشته. بیا هم پام کوئ.",
     ur: "اگلے 72 گھنٹوں میں موسم کی کوئی وارننگ متوقع نہیں۔ پھر بھی محتاط رہیں۔",
-    ti: "ኣብ ዝመጽእ 72 ሰዓት ናይ ኣየር ሓበሬታ ሓደጋ የለን። ግን ተጠንቀቑ።"
+    ti: "ኣብ ዝመጽእ 72 ሰዓት ናይ ኣየር ሓበሬታ ሓደጋ የለን። ግን ተጠንቀቑ።",
+    wo: "Amul yégle musiba ci 72 waxtu yii di ñëw. Waaye moytul.",
+    mnk: "Waatoo masiiboo kibaaroo te jee waati 72 kono meŋ be naa. Bari i hakiloo tu.",
+    ff: "Alaa habaru musiiba weeyo e waktuuji 72 garooji. Kono reento."
   }
 };
 

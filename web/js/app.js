@@ -196,6 +196,7 @@
       ${(x.hydro || []).map((h) => `<div style="font-size:12px;color:#334155">💧 ${h.label}: ${(h.h_mm / 1000).toFixed(2)} m alle ${new Date(h.t * 1000).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</div>`).join("")}
       <table class="hzt">${rows}</table>
       <div class="msg" dir="${lang.rtl ? "rtl" : "ltr"}" lang="${lang.code}" id="msgbox"></div>
+      ${lang.bozza ? `<div class="warn">⚠️ Traduzione in ${lang.label} non ancora validata da un madrelingua: non inoltrarla senza averla fatta controllare.</div>` : ""}
       <div class="row"><button class="btn" id="copy">Copia messaggio</button><button class="btn ghost" id="copyall">Copia in tutte le lingue</button><span id="copied" style="font-size:12px;color:#16a34a"></span></div>
       <div class="links">Allerte ufficiali: ${links}</div>`;
     $("#msgbox").textContent = msg;

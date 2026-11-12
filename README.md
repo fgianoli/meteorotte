@@ -89,7 +89,7 @@ Sulla mappa ci sono anche il **radar** (RainViewer, ultime 2 h con animazione) e
 docker-compose.yml, .env.example
 web/                    web app (PWA): index.html, js/app.js, sw.js
 web/js/alerts.js        motore di allerta: funzioni pure, condivise tra web e server
-web/js/i18n.js          messaggi in it, en, fr, ar, fa/dari, ps, ur, ti
+web/js/i18n.js          messaggi in it, en, fr, ar, fa/dari, ps, ur, ti, wo, mnk, ff
 web/data/hotspots.js    punti critici, bacini a monte, celle GloFAS, aree MeteoAlarm, idrometri, numeri d'emergenza, link
 server/worker.js        raccolta dati e pubblicazione (JSON, CAP, Atom, storico)
 server/bot.js           bot Telegram
@@ -109,7 +109,7 @@ tools/snap_glofas.py    aggancia ogni punto fluviale alla cella GloFAS sull'asta
 - **Rilasci delle dighe** (impianti idroelettrici in Val Roja, Isonzo, Drina): non sono nei dati aperti. Serve un accordo con i gestori.
 - **Valanghe**: il worker legge i bollettini ufficiali per le micro-regioni EAWS dei valichi (IT-21-TO-03 Alpi Graie/Val di Susa, FR-13 Briançonnais). Fuori stagione (di solito fino a dicembre) i bollettini non ci sono e resta solo l'indicatore ricavato dalla neve. Per aggiungere altre zone basta indicare nel punto le micro-regioni (`eaws`) e la quota del valico (`quota`). Le altitudini "treeline" sono considerate 2000 m. Croazia e Bosnia non fanno parte di EAWS. Solo in modalità server.
 - **Coordinate** dei punti e celle GloFAS: approssimative, da verificare con le associazioni.
-- **Traduzioni**: bozze. Vanno validate da mediatori prima di qualsiasi uso, soprattutto pashto, tigrino, urdu e dari.
+- **Traduzioni**: bozze. Wolof, mandinka e pulaar sono le meno affidabili (segnalate come non validate nell'app e nel bot). Vanno validate da mediatori prima di qualsiasi uso, soprattutto pashto, tigrino, urdu e dari.
 - **Open-Meteo gratuito** è solo per uso non commerciale. Col worker si fanno circa 50 chiamate al giorno, ben sotto i limiti.
   Per un servizio stabile conviene una chiave API (`OPENMETEO_APIKEY`) oppure un'istanza Open-Meteo propria (`OPENMETEO_URL`).
 - **Tile OSM**: per un servizio pubblico vanno sostituite con tile proprie (PMTiles su studiogis.eu).

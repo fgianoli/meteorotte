@@ -92,7 +92,8 @@ async function handle(msg) {
     case "/lingue": {
       const ok = args.filter((a) => LCODES.includes(a));
       if (ok.length) { sub.langs = ok; writeJSON(SUBS, subs); }
-      return send(chat, "Lingue dei messaggi: " + sub.langs.join(", ") + "\nDisponibili: " + LCODES.join(" "));
+      const bozze = S.LANGS.filter((l) => l.bozza && sub.langs.includes(l.code)).map((l) => l.label);
+      return send(chat, "Lingue dei messaggi: " + sub.langs.join(", ") + "\nDisponibili: " + LCODES.join(" ") + (bozze.length ? "\n⚠️ Traduzioni non ancora validate: " + bozze.join(", ") + ". Falle controllare prima di inoltrarle." : ""));
     }
     case "/livello": {
       const n = +args[0];
