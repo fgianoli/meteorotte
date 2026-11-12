@@ -1,0 +1,7 @@
+.env
+docker-compose.override.yml
+node_modules/
+private/
+web/api/
+*.tmp
+__pycache__/

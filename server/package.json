@@ -1,0 +1,8 @@
+{
+  "name": "meteorotte-server",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Worker e bot Telegram di MeteoRotte (nessuna dipendenza esterna, Node >= 20)",
+  "scripts": { "worker": "node worker.js", "bot": "node bot.js", "test": "node test/alerts.test.js && node test/worker.test.js" },
+  "engines": { "node": ">=20" }
+}

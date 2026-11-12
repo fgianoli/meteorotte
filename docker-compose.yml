@@ -1,0 +1,43 @@
+# MeteoRotte – web app + worker dati + bot Telegram (opzionale)
+#   docker compose up -d --build                 # web + worker
+#   docker compose --profile bot up -d --build   # + bot Telegram (serve TELEGRAM_TOKEN in .env)
+services:
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - public:/data/public:ro
+    depends_on: [worker]
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: server/Dockerfile }
+    image: meteorotte-server
+    command: ["node", "worker.js"]
+    env_file: .env
+    volumes:
+      - public:/data/public
+      - private:/data/private
+    healthcheck:
+      test: ["CMD", "node", "-e", "const s=require('fs').statSync('/data/public/alerts.json');process.exit(Date.now()-s.mtimeMs<3*3600e3?0:1)"]
+      interval: 10m
+      start_period: 5m
+    restart: unless-stopped
+
+  bot:
+    image: meteorotte-server
+    command: ["node", "bot.js"]
+    env_file: .env
+    volumes:
+      - public:/data/public:ro
+      - private:/data/private
+    depends_on: [worker]
+    restart: unless-stopped
+    profiles: ["bot"]
+
+volumes:
+  public:    # alerts.json, feed.atom, cap/*.xml – serviti da nginx
+  private:   # iscrizioni del bot, storico – mai esposti

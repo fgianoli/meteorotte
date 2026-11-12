@@ -1,0 +1,11 @@
+# Copia in docker-compose.override.yml sul server per pubblicare il sito tramite Nginx Proxy Manager
+# invece di esporre la porta 8080. Richiede Docker Compose >= 2.24 (per !reset).
+# Nome della rete di NPM: docker network ls
+services:
+  web:
+    ports: !reset []
+    networks: [default, npm]
+networks:
+  npm:
+    external: true
+    name: NOME_RETE_NPM
