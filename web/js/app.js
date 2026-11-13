@@ -10,7 +10,7 @@
   const state = { results: {}, selected: null, region: "Tutte", lang: "it", fetchedAt: null, markers: {} };
 
   // ---------- mappa
-  const map = L.map("map", { zoomControl: true }).setView([44.6, 14.5], 6);
+  const map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([44.6, 14.5], 6);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18, attribution: "© OpenStreetMap · meteo © Open-Meteo (ECMWF, DWD ICON, Météo-France) · piene © Copernicus GloFAS · radar © RainViewer"
   }).addTo(map);
@@ -95,8 +95,9 @@
   const legend = L.control({ position: "bottomright" });
   legend.onAdd = () => {
     const d = L.DomUtil.create("div", "legend");
-    d.innerHTML = `<b>${T("lgPoints")}</b>` + LEVEL_NAME.map((n, i) => `<div><i style="background:${LEVEL_COLOR[i]}"></i>${n}</div>`).join("") + "<div style='color:#64748b'>" + T("next72") + "</div>" +
-      `<b>${T("lgAval")}</b><div class="avsc">${[1, 2, 3, 4, 5].map((v) => `<span style="background:${AVAL_COLOR[v]};color:${v >= 4 ? "#fff" : "#111"}">${v}</span>`).join("")}</div>`;
+    d.innerHTML = `<details ${window.innerWidth >= 800 ? "open" : ""}><summary>ⓘ ${T("legend")}</summary><b>${T("lgPoints")}</b>` + LEVEL_NAME.map((n, i) => `<div><i style="background:${LEVEL_COLOR[i]}"></i>${n}</div>`).join("") + "<div style='color:#64748b'>" + T("next72") + "</div>" +
+      `<b>${T("lgAval")}</b><div class="avsc">${[1, 2, 3, 4, 5].map((v) => `<span style="background:${AVAL_COLOR[v]};color:${v >= 4 ? "#fff" : "#111"}">${v}</span>`).join("")}</div></details>`;
+    L.DomEvent.disableClickPropagation(d);
     return d;
   };
   legend.addTo(map);
@@ -507,6 +508,22 @@
     if (!navigator.geolocation) return stopNear("nearErr");
     $("#nearbtn").textContent = "📍 " + T("nearWait");
     watchId = navigator.geolocation.watchPosition(checkNear, (e) => { if (e.code === 1) stopNear("nearDenied"); else $("#nearbtn").textContent = "📍 " + T("nearWait"); /* errore temporaneo del GPS: si continua a provare */ }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+  };
+
+  // ---------- installazione dell'app
+  let installEvt = null;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("#install").hidden = false; });
+  window.addEventListener("appinstalled", () => { $("#install").hidden = true; });
+  $("#install").textContent = T("install");
+  if (ios && !standalone) $("#install").hidden = false; // iOS non propone l'installazione: si spiega come fare
+  $("#install").onclick = async () => {
+    if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; $("#install").hidden = true; return; }
+    const el = document.createElement("div"); el.className = "modal";
+    el.innerHTML = `<div class="mbox"><p style="font-size:16px"></p><button class="btn">OK</button></div>`;
+    el.querySelector("p").textContent = T("iosHint");
+    el.querySelector("button").onclick = () => el.remove();
+    document.body.appendChild(el);
   };
 
   // ---------- avvio

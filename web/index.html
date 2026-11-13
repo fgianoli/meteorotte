@@ -7,6 +7,10 @@
 <meta name="theme-color" content="#14213d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MeteoRotte">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root { --bg:#0f172a; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -73,9 +77,21 @@
   #near { white-space:pre-wrap; padding:12px 14px; font-size:17px; line-height:1.45; font-weight:600; position:sticky; top:0; z-index:5; }
   .nearbox { padding:10px; border-bottom:1px solid var(--line); } .nearbox .btn { width:100%; font-size:14px; padding:9px; } .nearbox small { display:block; color:var(--muted); font-size:11.5px; margin-top:4px; }
   svg.spark { width:100%; height:90px; display:block; }
+  .ctl { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .ctl label { font-size:13px; }
+  .legend summary { cursor:pointer; font-weight:700; list-style:none; } .legend summary::-webkit-details-marker { display:none; }
+  body { height:100dvh; grid-template-columns:minmax(0,1fr); overflow:hidden; } header, aside, #map { min-width:0; }
   @media (max-width: 800px) {
-    main { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; }
+    header { padding:6px 8px; gap:4px 8px; } header h1 { font-size:15px; } #status { font-size:11px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    header .sp { display:none; }
+    .ctl { flex-wrap:nowrap; overflow-x:auto; width:100%; padding-bottom:2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; } .ctl::-webkit-scrollbar { display:none; }
+    .ctl > * { flex:none; white-space:nowrap; } .ctl label span { display:none; }
+    header select, header button, #help { font-size:13px; padding:7px 9px; }
+    main { grid-template-columns: minmax(0,1fr); grid-template-rows: 46dvh minmax(0,1fr); }
     #map { order:1; } aside { order:2; border-right:0; border-top:1px solid var(--line); }
+    .site { padding:12px; } .chip { padding:7px 12px; font-size:13px; } .filters { flex-wrap:nowrap; overflow-x:auto; position:static; } .filters .chip { flex:none; white-space:nowrap; }
+    .legend { font-size:11px; padding:4px 6px; } .leaflet-control-attribution { font-size:9px; max-width:70vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .btn { padding:9px 12px; font-size:14px; } #detail .row .btn { flex:1; }
+    .poster .ph { font-size:20px; padding:10px 12px; } .poster .pb { padding:4px 14px; font-size:20px; }
   }
 </style>
 </head>
@@ -84,14 +100,17 @@
   <h1>🛟 MeteoRotte</h1>
   <span id="status" data-t="loading">Caricamento…</span>
   <span class="sp"></span>
-  <label style="font-size:13px"><span data-t="msgLang">Lingua messaggio</span>
-    <select id="lang"></select>
-  </label>
-  <button id="push" hidden>🔔</button>
-  <a id="help" href="guida.html" target="_blank" rel="noopener" data-t="help">❓ Guida</a>
-  <button id="info" data-t="info">ⓘ Avvertenze</button>
-  <button id="refresh" data-t="refresh">⟳ Aggiorna</button>
-  <select id="uilang" title="Interface language"></select>
+  <div class="ctl">
+    <label><span data-t="msgLang">Lingua messaggio</span>
+      <select id="lang"></select>
+    </label>
+    <button id="install" hidden></button>
+    <button id="push" hidden>🔔</button>
+    <a id="help" href="guida.html" target="_blank" rel="noopener" data-t="help">❓ Guida</a>
+    <button id="info" data-t="info">ⓘ Avvertenze</button>
+    <button id="refresh" data-t="refresh">⟳ Aggiorna</button>
+    <select id="uilang" title="Interface language"></select>
+  </div>
 </header>
 <main>
   <aside>
