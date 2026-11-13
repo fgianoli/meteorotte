@@ -69,6 +69,8 @@
   .lch { font-weight:700; font-size:12px; margin-bottom:4px; }
   .leaflet-control-layers label { font-size:13px; margin:2px 0; }
   .avsc { display:flex; } .avsc span { flex:1; text-align:center; font-weight:700; font-size:11px; }
+  #near { white-space:pre-wrap; padding:12px 14px; font-size:17px; line-height:1.45; font-weight:600; position:sticky; top:0; z-index:5; }
+  .nearbox { padding:10px; border-bottom:1px solid var(--line); } .nearbox .btn { width:100%; font-size:14px; padding:9px; } .nearbox small { display:block; color:var(--muted); font-size:11.5px; margin-top:4px; }
   svg.spark { width:100%; height:90px; display:block; }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; }
@@ -91,6 +93,8 @@
 </header>
 <main>
   <aside>
+    <div id="near" hidden></div>
+    <div class="nearbox"><button id="nearbtn" class="btn"></button><small data-t="nearNote"></small></div>
     <div class="filters" id="filters"></div>
     <div id="detail"></div>
     <div id="list"></div>

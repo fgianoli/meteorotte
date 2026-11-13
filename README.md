@@ -150,6 +150,12 @@ Per Slovenia, Croazia, Bosnia, Serbia, Bulgaria e Grecia le allerte ufficiali re
 Sulla mappa: bivacchi, rifugi e ripari entro 15 km dai punti (OpenStreetMap, `tools/fetch_osm.py`) e sentieri segnati (Waymarked Trails).
 `web/data/aiuti.js` è predisposto per i punti di aiuto, da compilare solo con luoghi confermati dalle associazioni.
 
+## Avvisi di prossimità
+
+Il tasto «Avvisami se sono in un punto pericoloso» usa il GPS del telefono per mostrare l'avviso quando ci si trova vicino a un punto critico
+(500 m per i fiumi, fino a 4 km per i valichi; nel letto di un fiume l'avviso compare sempre, anche senza allerta).
+Il confronto avviene sul telefono: la posizione non viene inviata al server né salvata. Funziona solo con l'app aperta e richiede HTTPS.
+
 ## Principi
 
 Nessuna geolocalizzazione degli utenti, nessun account, nessun log di accesso conservato. I messaggi parlano di luoghi e di comportamenti sicuri, non di percorsi.

@@ -346,7 +346,7 @@
     $("aside").scrollTop = 0;
   }
 
-  function render() { renderFilters(); renderDetail(); renderList(); renderMarkers(); renderAreas(state.mode === "server" ? state.serverData : null); }
+  function render() { if (typeof checkNear === "function") checkNear(lastPos); renderFilters(); renderDetail(); renderList(); renderMarkers(); renderAreas(state.mode === "server" ? state.serverData : null); }
 
   // ---------- lingua dell'interfaccia
   document.documentElement.lang = UI_LANG;
@@ -356,7 +356,7 @@
 
   // ---------- lingua
   $("#lang").innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.label}</option>`).join("");
-  $("#lang").onchange = (e) => { state.lang = e.target.value; renderDetail(); };
+  $("#lang").onchange = (e) => { state.lang = e.target.value; renderDetail(); checkNear(lastPos); };
   $("#refresh").onclick = refresh;
 
   // ---------- radar (RainViewer)
@@ -467,6 +467,47 @@
     } catch (e) { console.warn(e); btn.textContent = "🔕 " + T("pushErr"); }
   }
   pushState().then((st) => { if (!st) return; const b = $("#push"); b.hidden = false; b.textContent = "🔔 " + T(st.sub ? "pushOn" : "pushOff"); b.onclick = togglePush; }).catch(() => {});
+
+  // ---------- avvisi di prossimità: il calcolo avviene sul telefono, la posizione non viene mai inviata né salvata
+  const RADIUS = { fiume: 500, urbano: 800, bosco: 3000, montagna: 4000, pianura: 3000 }; // metri; un punto può avere il suo "raggio"
+  let watchId = null, meDot = null, lastPos = null, lastNear = "";
+  function distM(la1, lo1, la2, lo2) {
+    const r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
+    return 12742000 * Math.asin(Math.sqrt(a));
+  }
+  function checkNear(pos) {
+    if (!pos || watchId === null) return;
+    lastPos = pos;
+    const la = pos.coords.latitude, lo = pos.coords.longitude, acc = Math.min(pos.coords.accuracy || 0, 500);
+    if (!meDot) meDot = L.circleMarker([la, lo], { radius: 7, color: "#fff", weight: 2, fillColor: "#2563eb", fillOpacity: 1 }).addTo(map); else meDot.setLatLng([la, lo]);
+    const hit = Object.values(state.results).map((x) => ({ x, d: distM(la, lo, x.site.lat, x.site.lon) }))
+      .filter((o) => o.d <= (o.x.site.raggio || RADIUS[o.x.site.tipo] || 1000) + acc)
+      .sort((a, b) => a.d - b.d)
+      .find((o) => o.x.site.tipo === "fiume" || o.x.res.level >= 1); // nel letto di un fiume l'avviso c'è sempre, anche senza allerta
+    const el = $("#near");
+    $("#nearbtn").textContent = "📍 " + T("nearOn");
+    if (!hit) { el.hidden = true; lastNear = ""; return; }
+    let res = hit.x.res;
+    if (hit.x.site.tipo === "fiume" && !res.hazards.some((h) => h.type === "flood")) res = Object.assign({}, res, { level: Math.max(res.level, 1), hazards: [{ type: "flood", level: 1 }].concat(res.hazards) });
+    const lang = LANGS.find((l) => l.code === state.lang);
+    el.hidden = false; el.dir = lang.rtl ? "rtl" : "ltr"; el.lang = lang.code;
+    el.style.background = LEVEL_COLOR[res.level]; el.style.color = res.level === 1 ? "#111" : "#fff";
+    el.textContent = composeMessage(hit.x.site, res, state.lang);
+    if (lastNear !== hit.x.site.id + res.level) { lastNear = hit.x.site.id + res.level; try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {} }
+  }
+  function stopNear(label) {
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    watchId = null; lastPos = null; lastNear = ""; $("#near").hidden = true;
+    if (meDot) { meDot.remove(); meDot = null; }
+    $("#nearbtn").textContent = "📍 " + T(label || "nearBtn");
+  }
+  $("#nearbtn").textContent = "📍 " + T("nearBtn");
+  $("#nearbtn").onclick = () => {
+    if (watchId !== null) return stopNear();
+    if (!navigator.geolocation) return stopNear("nearErr");
+    $("#nearbtn").textContent = "📍 " + T("nearWait");
+    watchId = navigator.geolocation.watchPosition(checkNear, (e) => { if (e.code === 1) stopNear("nearDenied"); else $("#nearbtn").textContent = "📍 " + T("nearWait"); /* errore temporaneo del GPS: si continua a provare */ }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+  };
 
   // ---------- avvio
   refresh();
