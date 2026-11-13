@@ -7,6 +7,8 @@ il confine Slovenia–Croazia (Kolpa/Kupa), la Bosnia (Una, Drina, Plješevica),
 Le allerte servono agli **operatori delle associazioni**, che inoltrano i messaggi multilingue
 (Telegram/WhatsApp, cartelli nei punti di accoglienza). L'app **non traccia nessuno**: lavora su luoghi, non su persone.
 
+**Guida all'uso per gli operatori**: [italiano](docs/guida.it.md) · [English](docs/guida.en.md) · [français](docs/guida.fr.md). La stessa guida è nell'app, dal tasto «Guida» (`web/guida.html`).
+
 ## Avvio con Docker (consigliato)
 
 ```bash
