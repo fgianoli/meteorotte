@@ -74,3 +74,5 @@ Nessun account, nessun dato personale, nessun registro degli accessi. Chi attiva
 - Coordinate, soglie e traduzioni vanno verificate con chi lavora sul posto.
 - I bollettini valanghe ci sono solo in stagione; fuori stagione resta un indicatore ricavato dalla neve prevista.
 - In pericolo chiamare il **112**.
+
+Per impostare e usare il bot Telegram: [bot-telegram.it.md](bot-telegram.it.md).

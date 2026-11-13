@@ -74,3 +74,5 @@ Pas de comptes, pas de données personnelles, pas de journal des accès. Activer
 - Coordonnées, seuils et traductions doivent être vérifiés avec les personnes de terrain.
 - Les bulletins d'avalanche n'existent qu'en saison ; hors saison il ne reste qu'un indicateur tiré de la neige prévue.
 - En danger, appelez le **112**.
+
+Pour configurer et utiliser le bot Telegram : [bot-telegram.fr.md](bot-telegram.fr.md).

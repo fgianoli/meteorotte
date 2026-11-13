@@ -8,7 +8,7 @@ async function get(url, { tries = 3, timeout = 30000, type = "json", headers = {
     try {
       const r = await fetch(url, { signal: ctl.signal, headers: Object.assign({ "User-Agent": UA }, headers) });
       if (!r.ok) throw new Error(`HTTP ${r.status} ${url.split("?")[0]}`);
-      return type === "json" ? await r.json() : await r.text();
+      return type === "json" ? await r.json() : type === "buffer" ? Buffer.from(await r.arrayBuffer()) : await r.text();
     } catch (e) {
       err = e;
       if (String(e.message).includes("HTTP 4") && !String(e.message).includes("429")) break;

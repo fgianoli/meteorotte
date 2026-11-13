@@ -10,6 +10,7 @@ function find(file) {
 }
 require(find("hotspots.js"));
 require(find("i18n.js"));
+try { require(find("dpc-zones.js")); } catch (e) { globalThis.DPC_ZONES = {}; }
 const Alerts = require(find("alerts.js"));
 const g = globalThis;
-module.exports = { Alerts, HOTSPOTS: g.HOTSPOTS, LANGS: g.LANGS, MSG: g.MSG, ICONS: g.ICONS, LEVEL_ICON: g.LEVEL_ICON, EMERGENCY: g.EMERGENCY, LINKS: g.LINKS, composeMessage: g.composeMessage };
+module.exports = { Alerts, HOTSPOTS: g.HOTSPOTS, LANGS: g.LANGS, MSG: g.MSG, ICONS: g.ICONS, LEVEL_ICON: g.LEVEL_ICON, EMERGENCY: g.EMERGENCY, LINKS: g.LINKS, DPC_ZONES: g.DPC_ZONES, composeMessage: g.composeMessage };

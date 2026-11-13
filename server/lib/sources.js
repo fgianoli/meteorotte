@@ -213,6 +213,48 @@ async function vigilance() {
   return out;
 }
 
+// --- Protezione Civile: Bollettino di criticità nazionale (zone di allerta; idrogeologico, temporali, idraulico; oggi e domani)
+const zlib = require("zlib");
+const DPC_URL = "https://raw.githubusercontent.com/pcm-dpc/DPC-Bollettini-Criticita-Idrogeologica-Idraulica/master/files/all/latest_all.zip";
+function unzip(buf, wanted) { // estrae dall'archivio i file il cui nome supera il filtro
+  let e = buf.length - 22;
+  while (e >= 0 && buf.readUInt32LE(e) !== 0x06054b50) e--;
+  if (e < 0) throw new Error("archivio zip non valido");
+  const n = buf.readUInt16LE(e + 10); let p = buf.readUInt32LE(e + 16); const out = {};
+  for (let i = 0; i < n; i++) {
+    const method = buf.readUInt16LE(p + 10), csize = buf.readUInt32LE(p + 20), nl = buf.readUInt16LE(p + 28), el = buf.readUInt16LE(p + 30), cl = buf.readUInt16LE(p + 32), off = buf.readUInt32LE(p + 42);
+    const name = buf.toString("utf8", p + 46, p + 46 + nl);
+    if (wanted(name)) {
+      const start = off + 30 + buf.readUInt16LE(off + 26) + buf.readUInt16LE(off + 28), data = buf.subarray(start, start + csize);
+      out[name] = method === 8 ? zlib.inflateRawSync(data) : data;
+    }
+    p += 46 + nl + el + cl;
+  }
+  return out;
+}
+function readDbf(b) {
+  const n = b.readUInt32LE(4), hl = b.readUInt16LE(8), rl = b.readUInt16LE(10), fields = [];
+  for (let p = 32; b[p] !== 0x0d; p += 32) fields.push([b.toString("latin1", p, p + 11).split("\0")[0], b[p + 16]]);
+  const rows = [];
+  for (let i = 0; i < n; i++) { let o = hl + i * rl + 1; const d = {}; for (const [nm, l] of fields) { d[nm] = b.toString("latin1", o, o + l).trim(); o += l; } rows.push(d); }
+  return rows;
+}
+const dpcLevel = (s) => (/ROSSA/i.test(s) ? 3 : /ARANCIONE/i.test(s) ? 2 : /GIALLA/i.test(s) ? 1 : 0);
+// Restituisce { issued: "AAAAMMGG_HHMM", zones: { "Ligu-A": { name, idrogeo: [oggi, domani], temporali: [..], idraulico: [..] } } }
+async function dpc() {
+  const files = unzip(await get(DPC_URL, { type: "buffer", timeout: 90000 }), (n) => /_(today|tomorrow)\.dbf$/.test(n));
+  const zones = {}; let issued = "";
+  for (const [name, buf] of Object.entries(files)) {
+    const k = /_today/.test(name) ? 0 : 1; issued = name.slice(0, 13);
+    for (const r of readDbf(buf)) {
+      const z = (zones[r.Zona_all] = zones[r.Zona_all] || { name: r.Nome_zona, idrogeo: [0, 0], temporali: [0, 0], idraulico: [0, 0] });
+      z.idrogeo[k] = Math.max(z.idrogeo[k], dpcLevel(r.Idrogeo)); z.temporali[k] = Math.max(z.temporali[k], dpcLevel(r.Temporali)); z.idraulico[k] = Math.max(z.idraulico[k], dpcLevel(r.Idraulico));
+    }
+  }
+  if (!Object.keys(zones).length) throw new Error("bollettino vuoto");
+  return { issued, zones };
+}
+
 // Tutte le reti disponibili; una rete che non risponde non blocca le altre.
 async function stations(sites) {
   const nets = { ARSO: arsoMeteo, DHMZ: dhmzMeteo, ARPAL: omirlMeteo };
@@ -223,4 +265,4 @@ async function stations(sites) {
   return { list: res.flatMap((r) => (r.status === "fulfilled" ? r.value : [])).filter((s) => s.lat && s.lon && s.t !== null), ko };
 }
 
-module.exports = { forecast, glofas, hubeau, meteoalarm, eaws, omirlHydro, arsoHydro, stations, vigilance, mfKeyExpiry, MFKEY, norm };
+module.exports = { forecast, glofas, hubeau, meteoalarm, eaws, omirlHydro, arsoHydro, stations, vigilance, dpc, mfKeyExpiry, MFKEY, norm };

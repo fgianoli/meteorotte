@@ -28,6 +28,16 @@ function writeAtomic(file, data) {
   fs.renameSync(tmp, file);
 }
 
+const DPC_LINK = "https://rischi.protezionecivile.gov.it/it/meteo-idro/allertamento/";
+const inRing = (la, lo, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [yi, xi] = r[i], [yj, xj] = r[j]; if ((yi > la) !== (yj > la) && lo < (xj - xi) * (la - yi) / (yj - yi) + xi) c = !c; } return c; };
+const zoneCache = {};
+// Zona di allerta in cui cade il punto (o quella indicata a mano nel campo "dpc" del punto).
+function dpcZoneOf(site) {
+  if (site.id in zoneCache) return zoneCache[site.id];
+  const hit = site.dpc || (Object.entries(S.DPC_ZONES || {}).find(([, z]) => z.g.some((r) => inRing(site.lat, site.lon, r))) || [])[0] || null;
+  return (zoneCache[site.id] = hit);
+}
+
 function dist(la1, lo1, la2, lo2) {
   const r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
   return 12742 * Math.asin(Math.sqrt(a));
@@ -111,9 +121,19 @@ async function run() {
     full ? settle("valanghe-eaws", src.eaws(eawsProviders, today), status) : cache.aval,
     ...feeds.map((f) => settle("meteoalarm-" + f, src.meteoalarm(f), status))
   ]);
+  const civRaw = full ? await settle("protezione-civile", src.dpc(), status) : cache.civ;
+  // Il bollettino vale per il giorno di emissione ("oggi") e per il successivo ("domani"): dopo mezzanotte "domani" diventa oggi.
+  let civ = null;
+  if (civRaw) {
+    const ymd = (ms) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Rome" }).format(new Date(ms)).replace(/-/g, "");
+    const issuedDay = civRaw.issued.slice(0, 8), todayIt = ymd(now * 1000), yesterdayIt = ymd(now * 1000 - 86400e3);
+    const shift = issuedDay === todayIt ? 0 : issuedDay === yesterdayIt ? 1 : -1;
+    if (shift < 0) status["protezione-civile"] = "attenzione: bollettino del " + issuedDay + " non più valido";
+    else civ = { issued: civRaw.issued, zones: Object.fromEntries(Object.entries(civRaw.zones).map(([id, z]) => [id, { name: z.name, idrogeo: shift ? [z.idrogeo[1], 0] : z.idrogeo, temporali: shift ? [z.temporali[1], 0] : z.temporali, idraulico: shift ? [z.idraulico[1], 0] : z.idraulico }])) };
+  }
   if (!wx) throw new Error("Open-Meteo non disponibile: mantengo i dati precedenti");
   if (aval && aval.missing.length) status["valanghe-eaws"] = aval.missing.length === eawsProviders.length ? "nessun bollettino oggi (fuori stagione?)" : "ok (mancano: " + aval.missing.join(", ") + ")";
-  if (full) cache = { t: Date.now(), wx, fl, aval, status: { "open-meteo": status["open-meteo"], glofas: status.glofas, "valanghe-eaws": status["valanghe-eaws"] } };
+  if (full) cache = { t: Date.now(), wx, fl, aval, civ: civRaw, status: { "protezione-civile": status["protezione-civile"], "open-meteo": status["open-meteo"], glofas: status.glofas, "valanghe-eaws": status["valanghe-eaws"] } };
   else Object.assign(status, cache.status);
   const warnings = Object.fromEntries(feeds.map((f, k) => [f, ma[k] || []]));
 
@@ -147,6 +167,20 @@ async function run() {
           if (t) extra.push({ type: t, level: w.level, time: w.onset || now, value: null, unit: w.event, source: "MeteoAlarm", link: w.link });
         }
       }
+    }
+    // Bollettino di criticità della Protezione Civile sulla zona di allerta del punto (oggi e domani)
+    const zid = site.paese === "IT" ? dpcZoneOf(site) : null, zc = zid && civ && civ.zones[zid];
+    if (zc) {
+      const tomorrow = Math.floor(now / 86400) * 86400 + 86400 - 3600; // mezzanotte italiana (ora solare)
+      const RISK = { idraulico: ["flood", "rischio idraulico"], idrogeo: [site.tipo === "fiume" ? "flood" : "rain", "rischio idrogeologico"], temporali: ["wind", "temporali"] };
+      let top = 0; const names = [];
+      for (const [k, [type, label]] of Object.entries(RISK)) {
+        const lvl = Math.max(zc[k][0], zc[k][1]);
+        if (!lvl) continue;
+        top = Math.max(top, lvl); names.push(label);
+        extra.push({ type, level: lvl, time: zc[k][0] >= zc[k][1] ? now : tomorrow, value: null, unit: `allerta ${["", "gialla", "arancione", "rossa"][lvl]} per ${label} – zona ${zc.name}`, source: "Protezione Civile", link: DPC_LINK });
+      }
+      if (top) extra.push({ type: "official", level: top, time: now, value: null, unit: `Bollettino di criticità: ${names.join(", ")} – zona ${zc.name}`, source: "Protezione Civile", link: DPC_LINK });
     }
     // Vigilance Météo-France sul dipartimento (per i punti italiani solo i fenomeni indicati in fen)
     if (site.vigilance && vig) {
@@ -219,7 +253,11 @@ async function run() {
 
   // Aree per la mappa: allerte ufficiali MeteoAlarm per regione/dipartimento e grado valanghe per micro-regione
   const areaKey = (n) => src.norm(String(n).split("/")[0]).replace(/\be\b/g, " ").replace(/\s+/g, " ").trim();
-  const areas = { meteoalarm: {}, eaws: {} };
+  const areas = { meteoalarm: {}, eaws: {}, dpc: {}, dpcIssued: civ ? civ.issued : null };
+  for (const [id, z] of Object.entries((civ && civ.zones) || {})) {
+    const lvl = Math.max(...z.idrogeo, ...z.temporali, ...z.idraulico);
+    if (lvl) areas.dpc[id] = { name: z.name, level: lvl, idrogeo: z.idrogeo, temporali: z.temporali, idraulico: z.idraulico };
+  }
   for (const f of feeds) {
     const m = (areas.meteoalarm[f] = {});
     for (const w of warnings[f] || []) {

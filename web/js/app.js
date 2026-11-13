@@ -58,7 +58,19 @@
   function renderAreas(j) {
     areaLayer.clearLayers(); avalLayer.clearLayers(); hydroLayer.clearLayers(); stationLayer.clearLayers();
     const A = (j && j.areas) || { meteoalarm: {}, eaws: {} };
+    const lv = (n) => ["–", T("lvl1"), T("lvl2"), T("lvl3")][n];
+    const hasDpc = Object.keys(A.dpc || {}).length > 0 || A.dpcIssued;
+    for (const [id, z] of Object.entries(A.dpc || {})) {
+      const shape = (window.DPC_ZONES || {})[id];
+      if (!shape) continue;
+      const box = document.createElement("div");
+      [[z.name, "b"], [T("dpcToday") + " / " + T("dpcTomorrow"), "small"]].concat(
+        [["idraulico", T("dpcIdra")], ["idrogeo", T("dpcIdro")], ["temporali", T("dpcTemp")]].map(([k, lab]) => [`${lab}: ${lv(z[k][0])} / ${lv(z[k][1])}`, "div"]), [[T("dpcSrc"), "small"]])
+        .forEach(([t, tag]) => { const d = document.createElement(tag); d.textContent = t; d.style.display = "block"; box.appendChild(d); });
+      L.polygon(shape.g, { pane: "areas", color: LEVEL_COLOR[z.level], weight: 1.5, fillColor: LEVEL_COLOR[z.level], fillOpacity: 0.25 }).bindPopup(box).addTo(areaLayer);
+    }
     for (const feed of Object.keys(A.meteoalarm || {})) {
+      if (feed === "italy" && hasDpc) continue; // per l'Italia si mostrano le zone di allerta della Protezione Civile, più precise delle regioni
       const shapes = (window.AREAS || {})[feed] || {};
       for (const [k, a] of Object.entries(A.meteoalarm[feed])) {
         if (!shapes[k] || !a.level) continue;
@@ -221,12 +233,15 @@
       .filter((x) => state.region === "Tutte" || x.site.regione === state.region)
       .sort((a, b) => b.res.level - a.res.level || a.site.nome.localeCompare(b.site.nome));
     $("#list").innerHTML = items.map((x) => {
-      const hz = x.res.hazards.map((h) => `${LEVEL_ICON[h.level]}${ICONS[h.type]}`).join(" ") || "—";
+      const seen = new Set();
+      const hz = x.res.hazards.filter((h) => !seen.has(h.type) && seen.add(h.type)).map((h) => `<span class="hzc" style="border-color:${LEVEL_COLOR[h.level]}">${ICONS[h.type] || ""} ${T("hzs_" + h.type)}</span>`).join("") || `<span style="color:#64748b">${T("lvl0")}</span>`;
       return `<div class="site ${state.selected === x.site.id ? "sel" : ""}" data-id="${x.site.id}">
         <span class="dot" style="background:${LEVEL_COLOR[x.res.level]}"></span>
         <div><b>${x.site.nome}</b><small>${x.site.regione} · ${x.site.tipo} · ${Math.round(x.wx.elevation)} m</small>
         <div class="hz">${hz}</div></div></div>`;
     }).join("") || "<p style='padding:12px'>" + T("noData") + "</p>";
+    // riepilogo: quanti punti per livello nella zona selezionata
+    if (items.length) $("#list").insertAdjacentHTML("afterbegin", `<div class="sum">${[3, 2, 1, 0].map((l) => `<span><i style="background:${LEVEL_COLOR[l]}"></i>${items.filter((x) => x.res.level === l).length}</span>`).join("")}</div>`);
     $("#list").querySelectorAll(".site").forEach((el) => el.onclick = () => select(el.dataset.id, true));
   }
 
@@ -327,7 +342,7 @@
       <table class="hzt">${rows}</table>
       <div class="msg" dir="${lang.rtl ? "rtl" : "ltr"}" lang="${lang.code}" id="msgbox"></div>
       ${lang.bozza ? `<div class="warn">⚠️ ${lang.label}: ${T("draft")}</div>` : ""}
-      <div class="row"><button class="btn" id="copy">${T("copy")}</button><button class="btn ghost" id="copyall">${T("copyAll")}</button><button class="btn ghost" id="poster">${T("poster")}</button><span id="copied" style="font-size:12px;color:#16a34a"></span></div>
+      <div class="row"><button class="btn" id="copy">${T("copy")}</button><button class="btn ghost" id="copyall">${T("copyAll")}</button><button class="btn ghost" id="poster">${T("poster")}</button><button class="btn ghost mob" id="tomap">${T("showMap")}</button><span id="copied" style="font-size:12px;color:#16a34a"></span></div>
       <div class="links">${T("official")} ${links}</div>`;
     $("#msgbox").textContent = msg;
     const copy = async (text) => {
@@ -336,10 +351,17 @@
     };
     $("#copy").onclick = () => copy(msg);
     $("#poster").onclick = () => showPoster(x);
+    $("#tomap").onclick = () => { setTab("map"); map.setView([x.site.lat, x.site.lon], Math.max(map.getZoom(), 10)); };
     $("#copyall").onclick = () => copy(LANGS.map((l) => composeMessage(x.site, x.res, l.code)).join("\n\n— — —\n\n"));
   }
 
+  // Telefono: due schede in basso, elenco delle allerte e mappa.
+  function setTab(t) { document.body.dataset.tab = t; if (t === "map") setTimeout(() => map.invalidateSize(), 60); }
+  document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
+  setTab("list");
+
   function select(id, pan) {
+    if (!pan) setTab("list"); // toccando un punto sulla mappa si apre la sua scheda
     state.selected = id;
     const x = state.results[id];
     if (pan && x) map.setView([x.site.lat, x.site.lon], Math.max(map.getZoom(), 9));

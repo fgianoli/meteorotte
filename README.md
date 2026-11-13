@@ -9,6 +9,8 @@ Le allerte servono agli **operatori delle associazioni**, che inoltrano i messag
 
 **Guida all'uso per gli operatori**: [italiano](docs/guida.it.md) · [English](docs/guida.en.md) · [français](docs/guida.fr.md). La stessa guida è nell'app, dal tasto «Guida» (`web/guida.html`).
 
+**Bot Telegram, impostazione e uso**: [italiano](docs/bot-telegram.it.md) · [English](docs/bot-telegram.en.md) · [français](docs/bot-telegram.fr.md).
+
 ## Avvio con Docker (consigliato)
 
 ```bash
@@ -82,6 +84,7 @@ python3 tools/snap_glofas.py                       # ricalcola le celle GloFAS s
 | Idrometri ARPAL (Roja a Ventimiglia, Bevera a Torri, Roja ad Airole) | portale OMIRL, serie a 15 minuti | soglie ufficiali arancione / rossa, oppure velocità di risalita |
 | Idrometri ARSO (Soča a Solkan per Gorizia, Kolpa a Sodevci, Petrina, Metlika) | ultimo valore di portata | le tre soglie ufficiali di piena |
 | Vigilance Météo-France (con `METEOFRANCE_APIKEY`) | allerte ufficiali per dipartimento (05, 06): piene, pioggia, neve, freddo, valanghe | giallo / arancione / rosso |
+| Protezione Civile | Bollettino di criticità nazionale (repository `pcm-dpc`, CC BY 4.0): rischio idraulico, idrogeologico e temporali per zona di allerta, oggi e domani | giallo / arancione / rosso ufficiali |
 | Allerte ufficiali | MeteoAlarm (CAP delle protezioni civili nazionali) | colore dell'allerta; l'evento viene tradotto nel consiglio pratico corrispondente |
 
 Le soglie sono più basse di quelle delle protezioni civili perché pensate per persone senza riparo: vanno tarate con chi lavora sul posto.
@@ -117,6 +120,7 @@ tools/snap_glofas.py    aggancia ogni punto fluviale alla cella GloFAS sull'asta
   (Hub'Eau). Mancano ancora gli idrometri ARPAL sul tratto italiano. Le soglie di risalita vanno tarate sulle piene storiche.
 - **Aree MeteoAlarm**: un'area compare nel feed solo quando ha un'allerta attiva. Alcuni nomi (Serbia, Grecia, Tuzla) sono stime
   da verificare il primo giorno in cui risultano in allerta.
+- **ARPA regionali**: le loro valutazioni di allerta arrivano tramite il bollettino della Protezione Civile. Come dati misurati sono collegati solo ARPAL (idrometri e temperature) e, per il confine orientale, ARSO.
 - **Stazioni meteo mancanti**: Piemonte (Arpa Piemonte pubblica un'API, ma ho trovato solo i dati giornalieri), Friuli Venezia Giulia, Bosnia, Serbia, Bulgaria, Grecia.
 - **Fulmini in tempo reale**: non c'è una fonte aperta utilizzabile (Blitzortung vieta il riuso senza accordo). Restano le previsioni di temporale e le allerte MeteoAlarm.
 - **OMIRL (ARPAL)**: è l'interfaccia del portale pubblico, non un'API documentata: può cambiare senza preavviso e le condizioni di riuso vanno chieste ad ARPAL.

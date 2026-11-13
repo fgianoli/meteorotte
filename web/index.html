@@ -77,6 +77,10 @@
   #near { white-space:pre-wrap; padding:12px 14px; font-size:17px; line-height:1.45; font-weight:600; position:sticky; top:0; z-index:5; }
   .nearbox { padding:10px; border-bottom:1px solid var(--line); } .nearbox .btn { width:100%; font-size:14px; padding:9px; } .nearbox small { display:block; color:var(--muted); font-size:11.5px; margin-top:4px; }
   svg.spark { width:100%; height:90px; display:block; }
+  header h1 { display:flex; align-items:center; gap:7px; } header h1 img { border-radius:5px; }
+  #tabs { display:none; } .mob { display:none; }
+  .sum { display:flex; gap:14px; padding:10px 12px; font-size:14px; font-weight:600; border-bottom:1px solid var(--line); } .sum i { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; }
+  .hzc { display:inline-block; border:2px solid; border-radius:999px; padding:1px 8px; font-size:12.5px; margin:3px 4px 0 0; background:#fff; white-space:nowrap; }
   .ctl { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .ctl label { font-size:13px; }
   .legend summary { cursor:pointer; font-weight:700; list-style:none; } .legend summary::-webkit-details-marker { display:none; }
   body { height:100dvh; grid-template-columns:minmax(0,1fr); overflow:hidden; } header, aside, #map { min-width:0; }
@@ -86,8 +90,13 @@
     .ctl { flex-wrap:nowrap; overflow-x:auto; width:100%; padding-bottom:2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; } .ctl::-webkit-scrollbar { display:none; }
     .ctl > * { flex:none; white-space:nowrap; } .ctl label span { display:none; }
     header select, header button, #help { font-size:13px; padding:7px 9px; }
-    main { grid-template-columns: minmax(0,1fr); grid-template-rows: 46dvh minmax(0,1fr); }
-    #map { order:1; } aside { order:2; border-right:0; border-top:1px solid var(--line); }
+    body { grid-template-rows:auto minmax(0,1fr) auto; }
+    main { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
+    aside { border-right:0; }
+    body[data-tab="list"] #map { display:none; } body[data-tab="map"] aside { display:none; }
+    #tabs { display:flex; background:#0f172a; padding-bottom:env(safe-area-inset-bottom); } #tabs button { flex:1; font:inherit; font-size:15px; font-weight:600; padding:13px 6px; border:0; background:none; color:#94a3b8; border-top:3px solid transparent; }
+    body[data-tab="list"] #tabs [data-tab="list"], body[data-tab="map"] #tabs [data-tab="map"] { color:#fff; border-top-color:#f97316; }
+    .mob { display:inline-block; } .site b { font-size:16px; }
     .site { padding:12px; } .chip { padding:7px 12px; font-size:13px; } .filters { flex-wrap:nowrap; overflow-x:auto; position:static; } .filters .chip { flex:none; white-space:nowrap; }
     .legend { font-size:11px; padding:4px 6px; } .leaflet-control-attribution { font-size:9px; max-width:70vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .btn { padding:9px 12px; font-size:14px; } #detail .row .btn { flex:1; }
@@ -97,7 +106,7 @@
 </head>
 <body>
 <header>
-  <h1>🛟 MeteoRotte</h1>
+  <h1><img src="icons/icon.svg" alt="" width="24" height="24"> MeteoRotte</h1>
   <span id="status" data-t="loading">Caricamento…</span>
   <span class="sp"></span>
   <div class="ctl">
@@ -123,12 +132,14 @@
   </aside>
   <div id="map"></div>
 </main>
+<nav id="tabs"><button data-tab="list" data-t="tabList">📋 Allerte</button><button data-tab="map" data-t="tabMap">🗺 Mappa</button></nav>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="data/hotspots.js"></script>
 <script src="data/shelters.js"></script>
 <script src="data/aiuti.js"></script>
 <script src="data/areas.js"></script>
+<script src="data/dpc-zones.js"></script>
 <script src="data/eaws.js"></script>
 <script src="js/ui-i18n.js"></script>
 <script src="js/i18n.js"></script>

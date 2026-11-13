@@ -1,6 +1,6 @@
 // Service worker: app utilizzabile offline con gli ultimi dati scaricati.
-const SHELL = "meteorotte-shell-v12", DATA = "meteorotte-data-v2";
-const FILES = ["./", "index.html", "guida.html", "js/app.js", "js/alerts.js", "js/i18n.js", "js/ui-i18n.js", "data/hotspots.js", "data/shelters.js", "data/aiuti.js", "data/areas.js", "data/eaws.js", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png",
+const SHELL = "meteorotte-shell-v14", DATA = "meteorotte-data-v2";
+const FILES = ["./", "index.html", "guida.html", "js/app.js", "js/alerts.js", "js/i18n.js", "js/ui-i18n.js", "data/hotspots.js", "data/shelters.js", "data/aiuti.js", "data/areas.js", "data/dpc-zones.js", "data/eaws.js", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(SHELL).then((c) =>
   // un file che non si scarica (per esempio la libreria della mappa da un altro sito) non deve impedire l'installazione

@@ -74,3 +74,5 @@ No accounts, no personal data, no access logs. Turning on notifications stores o
 - Coordinates, thresholds and translations need checking with people working on the ground.
 - Avalanche bulletins exist only in season; out of season there is only an indicator derived from forecast snow.
 - In danger call **112**.
+
+To set up and use the Telegram bot: [bot-telegram.en.md](bot-telegram.en.md).
