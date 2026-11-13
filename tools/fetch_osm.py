@@ -1,4 +1,4 @@
-"""Scarica da OpenStreetMap (Overpass) bivacchi, rifugi e ripari entro RADIUS km dai punti critici
+"""Scarica da OpenStreetMap (Overpass) bivacchi e ripari liberi (niente rifugi custoditi a pagamento) entro RADIUS km dai punti critici
 e scrive web/data/shelters.js. Da rilanciare ogni tanto: python3 tools/fetch_osm.py"""
 import json, re, sys, time, urllib.request, urllib.parse
 RADIUS = 15000
@@ -7,7 +7,7 @@ pts = [(float(a), float(b)) for a, b in re.findall(r'tipo: "[a-z]+", lat: ([\d.]
 URLS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
 data, failed = {"elements": []}, []
 for n, (la, lo) in enumerate(pts, 1):  # una richiesta per punto: le query grandi vanno in timeout
-    q = f'[out:json][timeout:25];(nwr["tourism"~"^(alpine_hut|wilderness_hut)$"](around:{RADIUS},{la},{lo});nwr["amenity"="shelter"]["shelter_type"~"^(basic_hut|weather_shelter|lean_to)$"](around:{RADIUS},{la},{lo}););out center tags;'
+    q = f'[out:json][timeout:25];(nwr["tourism"="wilderness_hut"](around:{RADIUS},{la},{lo});nwr["amenity"="shelter"]["shelter_type"~"^(basic_hut|weather_shelter|lean_to)$"](around:{RADIUS},{la},{lo}););out center tags;'
     for k, url in enumerate(URLS * 2):
         try:
             req = urllib.request.Request(url, data=urllib.parse.urlencode({"data": q}).encode(), headers={"User-Agent": "MeteoRotte/0.4"})
@@ -23,8 +23,8 @@ if not data["elements"]: sys.exit("Nessun dato scaricato: file non modificato")
 out, seen = [], set()
 for e in data["elements"]:
     t = e.get("tags", {}); la = e.get("lat") or e.get("center", {}).get("lat"); lo = e.get("lon") or e.get("center", {}).get("lon")
-    if la is None or t.get("access") in ("private", "no"): continue
-    kind = "rifugio" if t.get("tourism") == "alpine_hut" else "bivacco" if t.get("tourism") == "wilderness_hut" else "riparo"
+    if la is None or t.get("access") in ("private", "no", "customers") or t.get("fee") == "yes": continue  # solo ripari liberi e gratuiti
+    kind = "bivacco" if t.get("tourism") == "wilderness_hut" else "riparo"
     key = (round(la, 4), round(lo, 4))
     if key in seen: continue
     seen.add(key)
