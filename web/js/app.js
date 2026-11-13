@@ -121,7 +121,7 @@
     try {
       const j = await loadServer();
       state.fetchedAt = Date.parse(j.generated); state.mode = "server";
-      const ko = Object.entries(j.sources).filter(([, v]) => !/^(ok|nessun)/.test(v)).map(([k]) => k);
+      const ko = Object.entries(j.sources).filter(([, v]) => !/^(ok|nessun|non configurato)/.test(v)).map(([k]) => k);
       $("#status").textContent = T("server") + " " + hhmm(state.fetchedAt) + (ko.length ? " · ⚠️ " + T("missing") + ": " + ko.join(", ") : "");
       return render();
     } catch (e) { console.info("Server non disponibile, uso le API direttamente:", e.message); }

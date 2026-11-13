@@ -94,8 +94,15 @@ async function run() {
   const [liguria, slovenia, stz] = await Promise.all([
     settle("idrometri-arpal", src.omirlHydro(omirlCodes), status),
     settle("idrometri-arso", src.arsoHydro(), status),
-    settle("stazioni-meteo", src.stations(), status)
+    settle("stazioni-meteo", src.stations(H), status)
   ]);
+  // Météo-France: Vigilance per dipartimento e controllo della scadenza della chiave
+  let vig = null;
+  if (src.MFKEY) {
+    vig = await settle("meteo-france", src.vigilance(), status);
+    const exp = src.mfKeyExpiry(), days = exp ? Math.floor((exp - now) / 86400) : null;
+    if (vig && days !== null && days < 30) status["meteo-france"] = `attenzione: la chiave scade ${days < 0 ? "ed è scaduta" : "tra " + days + " giorni"} (${new Date(exp * 1000).toISOString().slice(0, 10)}), va rigenerata su portail-api.meteofrance.fr`;
+  } else status["meteo-france"] = "non configurato";
   if (stz && stz.ko.length) status["stazioni-meteo"] = "ok (mancano: " + stz.ko.join(", ") + ")";
   const [wx, fl, hydro, aval, ...ma] = await Promise.all([
     full ? settle("open-meteo", src.forecast(points), status) : cache.wx,
@@ -140,6 +147,16 @@ async function run() {
           if (t) extra.push({ type: t, level: w.level, time: w.onset || now, value: null, unit: w.event, source: "MeteoAlarm", link: w.link });
         }
       }
+    }
+    // Vigilance Météo-France sul dipartimento (per i punti italiani solo i fenomeni indicati in fen)
+    if (site.vigilance && vig) {
+      const mountain = site.tipo === "montagna";
+      const MAP = { 1: ["wind", "vento"], 2: [site.tipo === "fiume" ? "flood" : "rain", "pioggia-inondazione"], 3: ["wind", "temporali"], 4: ["flood", "piene"], 5: [mountain ? "snow" : "cold", "neve-ghiaccio"], 6: ["heat", "caldo"], 7: ["cold", "grande freddo"], 8: ["snow", "valanghe"] };
+      const list = (vig[site.vigilance.dep] || []).filter((v) => MAP[v.fen] && v.end > now && (!site.vigilance.fen || site.vigilance.fen.includes(v.fen)));
+      const byFen = {};
+      for (const v of list) if (!byFen[v.fen] || v.level > byFen[v.fen].level) byFen[v.fen] = v;
+      for (const v of Object.values(byFen)) extra.push({ type: MAP[v.fen][0], level: v.level, time: Math.max(now, v.begin), value: null, unit: `Vigilance ${MAP[v.fen][1]} – dipartimento ${site.vigilance.dep}`, source: "Météo-France", link: "https://vigilance.meteofrance.fr" });
+      if (Object.keys(byFen).length) extra.push({ type: "official", level: Math.max(...Object.values(byFen).map((v) => v.level)), time: now, value: null, unit: "Vigilance Météo-France: " + Object.values(byFen).map((v) => MAP[v.fen][1]).join(", "), source: "Météo-France", link: "https://vigilance.meteofrance.fr" });
     }
     // bollettini valanghe ufficiali (AINEVA/Arpa regionali, Météo-France) sulle micro-regioni del valico
     for (const rid of site.eaws || []) {

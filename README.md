@@ -79,6 +79,7 @@ python3 tools/snap_glofas.py                       # ricalcola le celle GloFAS s
 | Risalita del fiume (Roja) | idrometri Hub'Eau/Vigicrues a Breil, Saorge, Tenda, ogni 5–15 min | +20 / 40 / 70 cm in 1 h, oppure +30 / 60 / 100 cm in 3 h |
 | Idrometri ARPAL (Roja a Ventimiglia, Bevera a Torri, Roja ad Airole) | portale OMIRL, serie a 15 minuti | soglie ufficiali arancione / rossa, oppure velocità di risalita |
 | Idrometri ARSO (Soča a Solkan per Gorizia, Kolpa a Sodevci, Petrina, Metlika) | ultimo valore di portata | le tre soglie ufficiali di piena |
+| Vigilance Météo-France (con `METEOFRANCE_APIKEY`) | allerte ufficiali per dipartimento (05, 06): piene, pioggia, neve, freddo, valanghe | giallo / arancione / rosso |
 | Allerte ufficiali | MeteoAlarm (CAP delle protezioni civili nazionali) | colore dell'allerta; l'evento viene tradotto nel consiglio pratico corrispondente |
 
 Le soglie sono più basse di quelle delle protezioni civili perché pensate per persone senza riparo: vanno tarate con chi lavora sul posto.
@@ -104,7 +105,7 @@ tools/snap_glofas.py    aggancia ogni punto fluviale alla cella GloFAS sull'asta
 
 ## Dati mostrati senza generare allerte
 
-- **Stazione meteo più vicina** (entro 25 km): temperatura, vento e neve al suolo misurati. Reti collegate: ARSO (Slovenia, copre anche Carso e Gorizia), DHMZ (Croazia, poche stazioni), ARPAL (Liguria, solo temperatura).
+- **Stazione meteo più vicina** (entro 25 km): temperatura, vento e neve al suolo misurati. Reti collegate: Météo-France (con `METEOFRANCE_APIKEY`: stazioni a 6 minuti vicino a Monginevro, Briançon e Val Roja), ARSO (Slovenia, copre anche Carso e Gorizia), DHMZ (Croazia, poche stazioni), ARPAL (Liguria, solo temperatura).
 - **Ore di buio**, dalle previsioni orarie.
 
 ## Limiti noti (da leggere)
@@ -114,7 +115,7 @@ tools/snap_glofas.py    aggancia ogni punto fluviale alla cella GloFAS sull'asta
   (Hub'Eau). Mancano ancora gli idrometri ARPAL sul tratto italiano. Le soglie di risalita vanno tarate sulle piene storiche.
 - **Aree MeteoAlarm**: un'area compare nel feed solo quando ha un'allerta attiva. Alcuni nomi (Serbia, Grecia, Tuzla) sono stime
   da verificare il primo giorno in cui risultano in allerta.
-- **Stazioni meteo mancanti**: Piemonte (Arpa Piemonte pubblica un'API, ma ho trovato solo i dati giornalieri), Francia (Météo-France richiede una chiave gratuita da registrare su portail-api.meteofrance.fr), Friuli Venezia Giulia, Bosnia, Serbia, Bulgaria, Grecia.
+- **Stazioni meteo mancanti**: Piemonte (Arpa Piemonte pubblica un'API, ma ho trovato solo i dati giornalieri), Friuli Venezia Giulia, Bosnia, Serbia, Bulgaria, Grecia.
 - **Fulmini in tempo reale**: non c'è una fonte aperta utilizzabile (Blitzortung vieta il riuso senza accordo). Restano le previsioni di temporale e le allerte MeteoAlarm.
 - **OMIRL (ARPAL)**: è l'interfaccia del portale pubblico, non un'API documentata: può cambiare senza preavviso e le condizioni di riuso vanno chieste ad ARPAL.
 - **Notifiche push**: registrazione e controlli provati; la consegna reale va provata su un telefono con il sito in HTTPS.

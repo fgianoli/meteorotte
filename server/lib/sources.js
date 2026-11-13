@@ -155,13 +155,68 @@ async function omirlMeteo() {
   const j = await get(`${OMIRL}/stations/Termo`, JSONH);
   return j.map((s) => ({ label: s.name, lat: s.lat, lon: s.lon, alt: s.alt, t: isFinite(s.value) ? s.value : null, wind: null, gust: null, snow: null, time: Date.parse(s.refDate + "Z") / 1000, source: "ARPAL" }));
 }
+// --- Météo-France (chiave gratuita in METEOFRANCE_APIKEY, da portail-api.meteofrance.fr)
+const MF = "https://public-api.meteofrance.fr/public";
+const MFKEY = (process.env.METEOFRANCE_APIKEY || "").trim();
+const mfGet = (p, opt = {}) => get(MF + p, Object.assign({ headers: { apikey: MFKEY } }, opt));
+// Scadenza della chiave (è un JWT): secondi Unix, oppure null se non si riesce a leggerla.
+function mfKeyExpiry() {
+  try { return JSON.parse(Buffer.from(MFKEY.split(".")[1], "base64url").toString()).exp || null; } catch (e) { return null; }
+}
+function km(la1, lo1, la2, lo2) {
+  const r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+let mfList = null, mfListT = 0;
+// Osservazioni a 6 minuti delle 3 stazioni Météo-France più vicine (entro 25 km) a ciascun punto.
+async function mfMeteo(sites) {
+  if (!mfList || Date.now() - mfListT > 24 * 3600e3) {
+    const csv = await mfGet("/DPObs/v2/liste-stations", { type: "text" });
+    mfList = csv.split("\n").slice(1).map((l) => l.split(";")).filter((c) => c.length >= 6 && isFinite(+c[3]))
+      .map((c) => ({ id: c[0], label: c[2].toLowerCase().replace(/(^|[\s_-])\p{L}/gu, (m) => m.toUpperCase()).replace(/_/g, " "), lat: +c[3], lon: +c[4], alt: +c[5] }));
+    mfListT = Date.now();
+  }
+  const pick = new Map();
+  for (const s of sites) mfList.map((st) => [km(s.lat, s.lon, st.lat, st.lon), st]).filter((x) => x[0] <= 25).sort((a, b) => a[0] - b[0]).slice(0, 3).forEach((x) => pick.set(x[1].id, x[1]));
+  const out = [];
+  for (const st of pick.values()) {
+    try {
+      const j = await mfGet(`/DPObs/v2/station/infrahoraire-6m?id_station=${st.id}&format=json`, { tries: 2 });
+      const o = Array.isArray(j) ? j[j.length - 1] : null;
+      if (!o) continue;
+      const r = (v, k = 1, off = 0) => (typeof v === "number" ? Math.round((v * k + off) * 10) / 10 : null);
+      out.push({ label: st.label, lat: st.lat, lon: st.lon, alt: st.alt, t: r(o.t, 1, -273.15), wind: r(o.ff, 3.6), gust: r(o.raf10, 3.6), snow: r(o.sss, 100), time: Date.parse(o.validity_time) / 1000, source: "Météo-France" });
+    } catch (e) { /* una stazione che non risponde non blocca le altre */ }
+  }
+  return out;
+}
+// Vigilance: allerte ufficiali francesi per dipartimento. Restituisce { "05": [{ fen, level, begin }] } (level 1 giallo … 3 rosso).
+async function vigilance() {
+  const j = await mfGet("/DPVigilance/v1/cartevigilance/encours");
+  const out = {};
+  for (const p of (j.product && j.product.periods) || []) {
+    for (const d of (p.timelaps && p.timelaps.domain_ids) || []) {
+      for (const ph of d.phenomenon_items || []) {
+        const items = (ph.timelaps_items || []).filter((t) => t.color_id >= 2);
+        const level = Math.min(3, (items.length ? Math.max(...items.map((t) => t.color_id)) : ph.phenomenon_max_color_id) - 1);
+        if (!(level >= 1)) continue;
+        const begin = Date.parse(items.length ? items[0].begin_time : p.begin_validity_time) / 1000;
+        const end = Date.parse(items.length ? items[items.length - 1].end_time : p.end_validity_time) / 1000;
+        (out[d.domain_id] = out[d.domain_id] || []).push({ fen: +ph.phenomenon_id, level, begin, end });
+      }
+    }
+  }
+  return out;
+}
+
 // Tutte le reti disponibili; una rete che non risponde non blocca le altre.
-async function stations() {
+async function stations(sites) {
   const nets = { ARSO: arsoMeteo, DHMZ: dhmzMeteo, ARPAL: omirlMeteo };
+  if (MFKEY) nets["Météo-France"] = () => mfMeteo(sites || []);
   const res = await Promise.allSettled(Object.values(nets).map((f) => f()));
   const ko = Object.keys(nets).filter((_, i) => res[i].status !== "fulfilled");
   if (ko.length === res.length) throw new Error("nessuna rete di stazioni raggiungibile");
   return { list: res.flatMap((r) => (r.status === "fulfilled" ? r.value : [])).filter((s) => s.lat && s.lon && s.t !== null), ko };
 }
 
-module.exports = { forecast, glofas, hubeau, meteoalarm, eaws, omirlHydro, arsoHydro, stations, norm };
+module.exports = { forecast, glofas, hubeau, meteoalarm, eaws, omirlHydro, arsoHydro, stations, vigilance, mfKeyExpiry, MFKEY, norm };
