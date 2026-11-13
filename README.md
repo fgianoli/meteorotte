@@ -142,6 +142,11 @@ MeteoRotte è un prototipo sperimentale, fornito senza alcuna garanzia. Non è u
 Le allerte sono calcolate in automatico: possono esserci falsi allarmi e pericoli non segnalati; l'assenza di allerta non significa sicurezza.
 Le stesse avvertenze compaiono al primo accesso alla web app, nel bot e in ogni file CAP.
 
+Livelli della mappa (si accendono dal riquadro in alto a destra; su telefono dall'icona dei livelli): punti critici, allerte ufficiali per area
+(regioni italiane e dipartimenti francesi, da MeteoAlarm), idrometri colorati per stato, pericolo valanghe per micro-regione (scala 1–5),
+stazioni meteo con la temperatura, radar, vento, sentieri, bivacchi e punti di aiuto. I confini delle aree si rigenerano con `tools/build_areas.py`.
+Per Slovenia, Croazia, Bosnia, Serbia, Bulgaria e Grecia le allerte ufficiali restano solo sui punti: mancano i confini delle loro aree MeteoAlarm.
+
 Sulla mappa: bivacchi, rifugi e ripari entro 15 km dai punti (OpenStreetMap, `tools/fetch_osm.py`) e sentieri segnati (Waymarked Trails).
 `web/data/aiuti.js` è predisposto per i punti di aiuto, da compilare solo con luoghi confermati dalle associazioni.
 

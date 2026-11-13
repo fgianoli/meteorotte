@@ -36,6 +36,7 @@ async function hubeau(codes) {
   const ref = await get("https://hubeau.eaufrance.fr/api/v2/hydrometrie/referentiel/stations?" + new URLSearchParams({ code_station: codes.join(","), format: "json", size: "50" }))
     .catch(() => ({ data: [] }));
   const labels = Object.fromEntries((ref.data || []).map((s) => [s.code_station, s.libelle_station]));
+  const pos = Object.fromEntries((ref.data || []).map((s) => [s.code_station, [s.latitude_station, s.longitude_station]]));
   const since = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 19) + "Z";
   for (const code of codes) {
     try {
@@ -43,7 +44,7 @@ async function hubeau(codes) {
         code_entite: code, grandeur_hydro: "H", date_debut_obs: since, size: "1000", sort: "asc"
       }));
       out[code] = {
-        label: labels[code] || code,
+        label: labels[code] || code, lat: (pos[code] || [])[0], lon: (pos[code] || [])[1],
         series: (j.data || []).map((o) => ({ t: Date.parse(o.date_obs) / 1000, h: o.resultat_obs })).filter((p) => isFinite(p.h)).sort((a, b) => a.t - b.t)
       };
     } catch (e) { out[code] = { label: labels[code] || code, series: [], error: e.message }; }
@@ -99,7 +100,8 @@ const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 const OMIRL = "https://omirl.regione.liguria.it/Omirl/rest";
 const JSONH = { headers: { Accept: "application/json" } };
 async function omirlHydro(codes) {
-  const out = {};
+  const out = {}, pos = {};
+  try { (await get(`${OMIRL}/stations/Idro`, JSONH)).forEach((s) => (pos[s.shortCode] = [s.lat, s.lon])); } catch (e) { /* senza coordinate l'idrometro non compare sulla mappa */ }
   for (const code of codes) {
     try {
       const j = await get(`${OMIRL}/charts/${code}/Idro`, JSONH);
@@ -107,6 +109,7 @@ async function omirlHydro(codes) {
       const lastT = data.length ? data[data.length - 1][0] : 0;
       const th = (re) => { const l = (j.horizontalLines || []).find((x) => re.test(x.name)); return l ? l.value : null; };
       out[code] = {
+        lat: (pos[code] || [])[0], lon: (pos[code] || [])[1],
         label: `${j.river || ""} – ${(j.title || code).split(" - ")[0]}`.replace(/^ – /, ""),
         series: data.filter((p) => p[0] >= lastT - 6 * 3600e3 && isFinite(p[1])).map((p) => ({ t: p[0] / 1000, h: p[1] * 1000 })),
         orange: th(/arancio/i), red: th(/ross/i)
@@ -120,11 +123,12 @@ async function omirlHydro(codes) {
 async function arsoHydro() {
   const xml = await get("https://www.arso.gov.si/xml/vode/hidro_podatki_zadnji.xml", { type: "text" });
   const out = {};
-  for (const m of xml.matchAll(/<postaja\s+sifra="(\d+)"[^>]*>([\s\S]*?)<\/postaja>/g)) {
-    const g = (t) => { const r = m[2].match(new RegExp(`<${t}>([^<]*)</${t}>`)); return r ? decode(r[1]) : null; };
+  for (const m of xml.matchAll(/<postaja\s+sifra="(\d+)"([^>]*)>([\s\S]*?)<\/postaja>/g)) {
+    const at = (k) => { const r = m[2].match(new RegExp(k + '="([^"]*)"')); return r ? +r[1] : null; };
+    const g = (t) => { const r = m[3].match(new RegExp(`<${t}>([^<]*)</${t}>`)); return r ? decode(r[1]) : null; };
     const n = (t) => { const v = parseFloat(g(t)); return isFinite(v) ? v : null; };
     const d = g("datum_cet");
-    out[m[1]] = { label: g("ime_kratko"), t: d ? Date.parse(d.replace(" ", "T") + ":00+01:00") / 1000 : null, h_cm: n("vodostaj"), q: n("pretok"),
+    out[m[1]] = { lat: at("wgs84_sirina"), lon: at("wgs84_dolzina"), label: g("ime_kratko"), t: d ? Date.parse(d.replace(" ", "T") + ":00+01:00") / 1000 : null, h_cm: n("vodostaj"), q: n("pretok"),
       soglie: [n("prvi_vv_pretok"), n("drugi_vv_pretok"), n("tretji_vv_pretok")] };
   }
   return out;

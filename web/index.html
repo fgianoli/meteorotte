@@ -62,6 +62,13 @@
   .mbox h2 { margin:0 0 6px; font-size:18px; } .mbox ul { padding-left:18px; margin:6px 0; } .mbox li { margin-bottom:6px; }
   .mbox .en, .mbox .src { font-size:12px; color:var(--muted); }
   .fact { font-size:12.5px; color:#334155; margin:2px 0; } .fact span { color:var(--muted); }
+  .pin { width:100%; height:100%; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .pin.sel { border:3px solid #0f172a; font-size:18px; }
+  .gauge { width:24px; height:24px; border-radius:6px; border:3px solid; background:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .tlab { font-size:11px; font-weight:700; border:1px solid #64748b; border-radius:4px; text-align:center; line-height:16px; }
+  .lch { font-weight:700; font-size:12px; margin-bottom:4px; }
+  .leaflet-control-layers label { font-size:13px; margin:2px 0; }
+  .avsc { display:flex; } .avsc span { flex:1; text-align:center; font-weight:700; font-size:11px; }
   svg.spark { width:100%; height:90px; display:block; }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; }
@@ -96,6 +103,8 @@
 <script src="data/hotspots.js"></script>
 <script src="data/shelters.js"></script>
 <script src="data/aiuti.js"></script>
+<script src="data/areas.js"></script>
+<script src="data/eaws.js"></script>
 <script src="js/ui-i18n.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/alerts.js"></script>

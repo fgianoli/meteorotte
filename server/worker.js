@@ -86,7 +86,7 @@ async function run() {
   const rivers = H.filter((s) => s.tipo === "fiume" && s.flood !== false);
   const feeds = [...new Set(H.filter((s) => s.meteoalarm).map((s) => s.meteoalarm.feed))];
   const codes = [...new Set(H.flatMap((s) => s.hubeau || []))];
-  const eawsProviders = [...new Set(H.flatMap((s) => (s.eaws || []).map((id) => (id.startsWith("FR") ? "FR" : id.split("-").slice(0, 2).join("-")))))];
+  const eawsProviders = [...new Set(["IT-21", "IT-23", "IT-25", "IT-34", "IT-36", "IT-57", "FR", "SI"].concat(H.flatMap((s) => (s.eaws || []).map((id) => (id.startsWith("FR") ? "FR" : id.split("-").slice(0, 2).join("-"))))))];
   const today = process.env.EAWS_DATE || new Date(now * 1000 + 3600e3).toISOString().slice(0, 10);
 
   const full = !cache || Date.now() - cache.t >= INTERVAL - 30000;
@@ -175,20 +175,22 @@ async function run() {
       const h = liguria && liguria[code];
       if (!h || !h.series.length) continue;
       const last = h.series[h.series.length - 1];
-      hydroNow.push({ code, label: h.label, t: last.t, h_mm: last.h, soglia: h.orange ? `arancione ${h.orange} m, rossa ${h.red} m` : "" });
+      hydroNow.push({ code, lat: h.lat, lon: h.lon, label: h.label, t: last.t, h_mm: last.h, soglia: h.orange ? `arancione ${h.orange} m, rossa ${h.red} m` : "" });
       if (now - last.t > 3 * 3600) continue;
       const m = last.h / 1000;
       const lvl = h.red != null && m >= h.red ? 3 : h.orange != null && m >= h.orange ? 2 : 0;
       if (lvl) extra.push({ type: "flood", level: lvl, time: last.t, value: Math.round(m * 100) / 100, unit: "m – sopra la soglia ufficiale", source: "idrometro " + h.label });
-      else { const hz = S.Alerts.hydroHazard(h.series, now, h.label); if (hz) extra.push(hz); }
+      else { const hz = S.Alerts.hydroHazard(h.series, now, h.label); if (hz) extra.push(hz); hydroNow[hydroNow.length - 1].stato = hz ? hz.level : 0; }
+      if (lvl) hydroNow[hydroNow.length - 1].stato = lvl;
     }
     // idrometri ARSO: portata rispetto alle tre soglie ufficiali di piena
     for (const code of site.arso || []) {
       const h = slovenia && slovenia[code];
       if (!h || h.t == null) continue;
-      hydroNow.push({ code, label: h.label, t: h.t, h_mm: h.h_cm != null ? h.h_cm * 10 : null, q: h.q, soglia: h.soglie[0] ? `piena da ${h.soglie[0]} m³/s` : "" });
+      hydroNow.push({ code, lat: h.lat, lon: h.lon, label: h.label, t: h.t, h_mm: h.h_cm != null ? h.h_cm * 10 : null, q: h.q, soglia: h.soglie[0] ? `piena da ${h.soglie[0]} m³/s` : "" });
       if (now - h.t > 3 * 3600 || h.q == null) continue;
       const lvl = h.soglie.reduce((l, th, i) => (th != null && h.q >= th ? i + 1 : l), 0);
+      hydroNow[hydroNow.length - 1].stato = lvl;
       if (lvl) extra.push({ type: "flood", level: lvl, time: h.t, value: Math.round(h.q), unit: "m³/s – sopra la soglia di piena", source: "idrometro " + h.label });
     }
     res = S.Alerts.merge(res, extra);
@@ -204,7 +206,7 @@ async function run() {
     const h = r.wx.hourly, a = res.startIndex, b = res.endIndex;
     const cut = (k) => (h[k] || []).slice(a, b);
     const messages = Object.fromEntries(S.LANGS.map((l) => [l.code, S.composeMessage(site, res, l.code)]));
-    hydroNow.push(...(site.hubeau || []).map((c) => hydro && hydro[c] && hydro[c].series.length ? { code: c, label: hydro[c].label, t: hydro[c].series.at(-1).t, h_mm: hydro[c].series.at(-1).h } : null).filter(Boolean));
+    hydroNow.push(...(site.hubeau || []).map((c) => hydro && hydro[c] && hydro[c].series.length ? { code: c, lat: hydro[c].lat, lon: hydro[c].lon, stato: (S.Alerts.hydroHazard(hydro[c].series, now, "") || { level: 0 }).level, label: hydro[c].label, t: hydro[c].series.at(-1).t, h_mm: hydro[c].series.at(-1).h } : null).filter(Boolean));
     sites.push({
       id: site.id,
       wx: { elevation: r.wx.elevation, hourly: { time: cut("time"), apparent_temperature: cut("apparent_temperature"), temperature_2m: cut("temperature_2m"), precipitation: cut("precipitation"), snowfall: cut("snowfall"), wind_gusts_10m: cut("wind_gusts_10m"), is_day: cut("is_day") } },
@@ -215,8 +217,28 @@ async function run() {
     });
   }
 
+  // Aree per la mappa: allerte ufficiali MeteoAlarm per regione/dipartimento e grado valanghe per micro-regione
+  const areaKey = (n) => src.norm(String(n).split("/")[0]).replace(/\be\b/g, " ").replace(/\s+/g, " ").trim();
+  const areas = { meteoalarm: {}, eaws: {} };
+  for (const f of feeds) {
+    const m = (areas.meteoalarm[f] = {});
+    for (const w of warnings[f] || []) {
+      if (!(w.expires > now)) continue;
+      const a = (m[areaKey(w.area)] = m[areaKey(w.area)] || { name: w.area, level: 0, events: [] });
+      a.level = Math.max(a.level, w.level);
+      if (!a.events.includes(w.event)) a.events.push(w.event);
+    }
+  }
+  for (const [rid, list] of Object.entries((aval && aval.ratings) || {})) {
+    let v = 0, b0 = null;
+    for (const b of list) { if (b.end && b.end < now) continue; for (const r of b.ratings) if (r.value > v) { v = r.value; b0 = b; } }
+    if (v) areas.eaws[rid] = { v, name: b0.region, provider: b0.provider };
+  }
+  const stations = ((stz && stz.list) || []).filter((st) => (!st.time || now - st.time < 3 * 3600) && H.some((s) => dist(s.lat, s.lon, st.lat, st.lon) <= 60))
+    .map((st) => ({ label: st.label, lat: st.lat, lon: st.lon, alt: st.alt, t: st.t, wind: st.wind, gust: st.gust, snow: st.snow, time: st.time, source: st.source }));
+
   const generated = Math.floor(now);
-  const out = { generated: new Date(generated * 1000).toISOString(), modelsUpdated: new Date(cache.t).toISOString(), validUntil: new Date((generated + 2 * INTERVAL / 1000) * 1000).toISOString(), sources: status, sites };
+  const out = { generated: new Date(generated * 1000).toISOString(), modelsUpdated: new Date(cache.t).toISOString(), validUntil: new Date((generated + 2 * INTERVAL / 1000) * 1000).toISOString(), sources: status, sites, areas, stations };
   writeAtomic(path.join(PUBLIC, "alerts.json"), JSON.stringify(out));
 
   // CAP + Atom

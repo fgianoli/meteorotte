@@ -34,15 +34,69 @@
   (window.SHELTERS || []).forEach((s) => poi(s.lat, s.lon, s.k, [s.n || KIND[s.k][1].split(":")[0], KIND[s.k][1], s.q ? "Quota " + s.q + " m" : "", "Fonte: OpenStreetMap, da verificare"]).addTo(shelterLayer));
   const aidLayer = L.layerGroup();
   (window.AIUTI || []).forEach((a) => poi(a.lat, a.lon, a.tipo, [a.nome, (KIND[a.tipo] || [, a.tipo])[1], a.orari, a.contatto, a.verificato ? "Verificato il " + a.verificato : ""]).addTo(aidLayer));
-  const overlays = { [T("radar")]: radarLayer, [T("wind")]: windLayer, [T("trails")]: trailLayer };
-  if ((window.SHELTERS || []).length) overlays[T("shelters")] = shelterLayer;
-  if ((window.AIUTI || []).length) { overlays[T("aid")] = aidLayer; aidLayer.addTo(map); }
-  L.control.layers(null, overlays, { collapsed: window.innerWidth < 800 }).addTo(map);
+  // Livelli della mappa. Compaiono sempre tutti nell'elenco: quelli senza dati sono indicati come vuoti.
+  const siteLayer = L.layerGroup().addTo(map);     // punti critici
+  const areaLayer = L.layerGroup().addTo(map);     // allerte ufficiali per regione / dipartimento
+  const avalLayer = L.layerGroup();                // grado valanghe per micro-regione
+  const hydroLayer = L.layerGroup().addTo(map);    // idrometri
+  const stationLayer = L.layerGroup();             // stazioni meteo
+  const empty = (n) => (n ? "" : ` <i style="color:#94a3b8">(${T("emptyL")})</i>`);
+  const overlays = {
+    [T("sitesL")]: siteLayer, [T("areasL")]: areaLayer, [T("hydroL")]: hydroLayer, [T("avalL")]: avalLayer, [T("stationsL")]: stationLayer,
+    [T("radar")]: radarLayer, [T("wind")]: windLayer, [T("trails")]: trailLayer,
+    [T("shelters") + empty((window.SHELTERS || []).length)]: shelterLayer,
+    [T("aid") + empty((window.AIUTI || []).length)]: aidLayer
+  };
+  if ((window.AIUTI || []).length) aidLayer.addTo(map);
+  const layerCtl = L.control.layers(null, overlays, { collapsed: window.innerWidth < 800 }).addTo(map);
+  const lc = layerCtl.getContainer().querySelector(".leaflet-control-layers-list");
+  if (lc) { const h = document.createElement("div"); h.className = "lch"; h.textContent = T("layers"); lc.prepend(h); }
+  map.createPane("areas").style.zIndex = 350; // sotto i punti
+
+  const AVAL_COLOR = ["#cccccc", "#ccff66", "#ffff00", "#ff9900", "#ff0000", "#7f0000"]; // scala europea 1–5
+  // Aree e stazioni pubblicate dal server (in modalità diretta non ci sono).
+  function renderAreas(j) {
+    areaLayer.clearLayers(); avalLayer.clearLayers(); hydroLayer.clearLayers(); stationLayer.clearLayers();
+    const A = (j && j.areas) || { meteoalarm: {}, eaws: {} };
+    for (const feed of Object.keys(A.meteoalarm || {})) {
+      const shapes = (window.AREAS || {})[feed] || {};
+      for (const [k, a] of Object.entries(A.meteoalarm[feed])) {
+        if (!shapes[k] || !a.level) continue;
+        const box = document.createElement("div");
+        [[shapes[k].n, "b"], [T("ofWarn") + ": " + LEVEL_NAME[a.level], "div"]].concat(a.events.map((e) => ["• " + e, "div"]), [["MeteoAlarm", "small"]])
+          .forEach(([t, tag]) => { const d = document.createElement(tag); d.textContent = t; box.appendChild(d); });
+        L.polygon(shapes[k].g, { pane: "areas", color: LEVEL_COLOR[a.level], weight: 1.5, fillColor: LEVEL_COLOR[a.level], fillOpacity: 0.22 }).bindPopup(box).addTo(areaLayer);
+      }
+    }
+    for (const [id, a] of Object.entries(A.eaws || {})) {
+      const g = (window.EAWS_REGIONS || {})[id];
+      if (!g) continue;
+      const box = document.createElement("div");
+      [[a.name || id, "b"], [T("avalDeg") + ": " + a.v + "/5", "div"], [a.provider, "small"]].forEach(([t, tag]) => { const d = document.createElement(tag); d.textContent = t; box.appendChild(d); });
+      L.polygon(g, { pane: "areas", color: "#475569", weight: 1, fillColor: AVAL_COLOR[a.v], fillOpacity: 0.45 }).bindPopup(box).addTo(avalLayer);
+    }
+    const seen = new Set();
+    Object.values(state.results).forEach((x) => (x.hydro || []).forEach((h) => {
+      if (h.lat == null || seen.has(h.code)) return; seen.add(h.code);
+      const col = h.stato == null ? "#94a3b8" : LEVEL_COLOR[h.stato];
+      const rows = [h.label, (h.h_mm != null ? (h.h_mm / 1000).toFixed(2) + " m" : "") + (h.q != null ? " · " + h.q + " m³/s" : ""), h.soglia ? T("threshold") + ": " + h.soglia : "", hm(h.t)];
+      const box = document.createElement("div");
+      rows.filter(Boolean).forEach((r, i) => { const d = document.createElement(i ? "div" : "b"); d.textContent = r; box.appendChild(d); });
+      L.marker([h.lat, h.lon], { icon: L.divIcon({ className: "", html: `<div class="gauge" style="border-color:${col}">💧</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }) }).bindPopup(box).addTo(hydroLayer);
+    }));
+    ((j && j.stations) || []).forEach((st) => {
+      const box = document.createElement("div");
+      [st.label + (st.alt ? " (" + Math.round(st.alt) + " m)" : ""), st.t + " °C" + (st.wind != null ? " · 💨 " + Math.round(st.wind) + (st.gust != null ? "/" + Math.round(st.gust) : "") + " km/h" : "") + (st.snow ? " · ❄️ " + st.snow + " cm" : ""), hm(st.time) + " · " + st.source]
+        .forEach((r, i) => { const d = document.createElement(i ? "div" : "b"); d.textContent = r; box.appendChild(d); });
+      L.marker([st.lat, st.lon], { icon: L.divIcon({ className: "", html: `<div class="tlab" style="background:${st.t <= -5 ? "#1e3a8a;color:#fff" : st.t <= 0 ? "#bfdbfe" : st.t >= 32 ? "#fecaca" : "#fff"}">${Math.round(st.t)}°</div>`, iconSize: [30, 18], iconAnchor: [15, 9] }) }).bindPopup(box).addTo(stationLayer);
+    });
+  }
 
   const legend = L.control({ position: "bottomright" });
   legend.onAdd = () => {
     const d = L.DomUtil.create("div", "legend");
-    d.innerHTML = LEVEL_NAME.map((n, i) => `<div><i style="background:${LEVEL_COLOR[i]}"></i>${n}</div>`).join("") + "<div style='color:#64748b'>" + T("next72") + "</div>";
+    d.innerHTML = `<b>${T("lgPoints")}</b>` + LEVEL_NAME.map((n, i) => `<div><i style="background:${LEVEL_COLOR[i]}"></i>${n}</div>`).join("") + "<div style='color:#64748b'>" + T("next72") + "</div>" +
+      `<b>${T("lgAval")}</b><div class="avsc">${[1, 2, 3, 4, 5].map((v) => `<span style="background:${AVAL_COLOR[v]};color:${v >= 4 ? "#fff" : "#111"}">${v}</span>`).join("")}</div>`;
     return d;
   };
   legend.addTo(map);
@@ -121,6 +175,7 @@
     try {
       const j = await loadServer();
       state.fetchedAt = Date.parse(j.generated); state.mode = "server";
+      state.serverData = j;
       const ko = Object.entries(j.sources).filter(([, v]) => !/^(ok|nessun|non configurato)/.test(v)).map(([k]) => k);
       $("#status").textContent = T("server") + " " + hhmm(state.fetchedAt) + (ko.length ? " · ⚠️ " + T("missing") + ": " + ko.join(", ") : "");
       return render();
@@ -175,12 +230,13 @@
   }
 
   function renderMarkers() {
-    Object.values(state.markers).forEach((m) => m.remove());
+    siteLayer.clearLayers();
     state.markers = {};
     Object.values(state.results).forEach((x) => {
-      const m = L.circleMarker([x.site.lat, x.site.lon], {
-        radius: x.site.id === state.selected ? 11 : 8, color: "#fff", weight: 2, fillColor: LEVEL_COLOR[x.res.level], fillOpacity: 0.95
-      }).addTo(map).bindTooltip(x.site.nome);
+      const top = x.res.hazards.find((h) => h.type !== "official") || x.res.hazards[0];
+      const sel = x.site.id === state.selected, size = sel ? 34 : 28;
+      const m = L.marker([x.site.lat, x.site.lon], { zIndexOffset: 500 + x.res.level * 100 + (sel ? 1000 : 0), icon: L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+        html: `<div class="pin${sel ? " sel" : ""}" style="background:${LEVEL_COLOR[x.res.level]}">${top ? ICONS[top.type] || "" : ""}</div>` }) }).addTo(siteLayer).bindTooltip(x.site.nome);
       m.on("click", () => select(x.site.id, false));
       state.markers[x.site.id] = m;
     });
@@ -290,7 +346,7 @@
     $("aside").scrollTop = 0;
   }
 
-  function render() { renderFilters(); renderDetail(); renderList(); renderMarkers(); }
+  function render() { renderFilters(); renderDetail(); renderList(); renderMarkers(); renderAreas(state.mode === "server" ? state.serverData : null); }
 
   // ---------- lingua dell'interfaccia
   document.documentElement.lang = UI_LANG;

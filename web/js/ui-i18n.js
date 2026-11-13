@@ -1,7 +1,7 @@
 // Testi dell'interfaccia (per gli operatori): italiano, inglese, francese. I messaggi di allerta stanno in i18n.js.
 (function () {
   const UI = {
-    it: { loading: "Caricamento…", msgLang: "Lingua messaggio", refresh: "⟳ Aggiorna", info: "ⓘ Avvertenze", all: "Tutte", noData: "Nessun dato.",
+    it: { areasL: "Allerte ufficiali per area", avalL: "Pericolo valanghe (bollettini)", hydroL: "Idrometri", stationsL: "Stazioni meteo", sitesL: "Punti critici", emptyL: "nessun dato caricato", layers: "Cosa mostrare sulla mappa", avalDeg: "grado di pericolo valanghe", ofWarn: "Allerta ufficiale", lgPoints: "Punti e aree", lgAval: "Valanghe (1–5)", loading: "Caricamento…", msgLang: "Lingua messaggio", refresh: "⟳ Aggiorna", info: "ⓘ Avvertenze", all: "Tutte", noData: "Nessun dato.",
       lvl0: "nessuna allerta", lvl1: "giallo", lvl2: "arancione", lvl3: "rosso", next72: "prossime 72 h",
       hz_official: "Allerta ufficiale (MeteoAlarm)", hz_flood: "Piena / piena improvvisa", hz_rain: "Pioggia intensa", hz_cold: "Freddo / ipotermia", hz_heat: "Caldo estremo", hz_snow: "Neve / valanghe", hz_wind: "Vento / temporali",
       downloading: "Scarico previsioni…", server: "Server · aggiornato alle", direct: "Diretto · aggiornato alle", missing: "non disponibili", offline: "⚠️ Offline – dati del", failed: "⚠️ Impossibile scaricare i dati",
@@ -21,7 +21,7 @@
         "<b>Privacy:</b> l'app non chiede la posizione, non ha account e non raccoglie dati personali.",
         "<b>In pericolo chiama il 112</b>: è gratuito in tutta Europa."],
       discSrc: "Nessuna garanzia sull'esattezza dei dati: chi li usa lo fa sotto la propria responsabilità." },
-    en: { loading: "Loading…", msgLang: "Message language", refresh: "⟳ Refresh", info: "ⓘ Disclaimer", all: "All", noData: "No data.",
+    en: { areasL: "Official warnings by area", avalL: "Avalanche danger (bulletins)", hydroL: "River gauges", stationsL: "Weather stations", sitesL: "Critical points", emptyL: "no data loaded", layers: "What to show on the map", avalDeg: "avalanche danger level", ofWarn: "Official warning", lgPoints: "Points and areas", lgAval: "Avalanches (1–5)", loading: "Loading…", msgLang: "Message language", refresh: "⟳ Refresh", info: "ⓘ Disclaimer", all: "All", noData: "No data.",
       lvl0: "no alert", lvl1: "yellow", lvl2: "orange", lvl3: "red", next72: "next 72 h",
       hz_official: "Official warning (MeteoAlarm)", hz_flood: "Flood / flash flood", hz_rain: "Heavy rain", hz_cold: "Cold / hypothermia", hz_heat: "Extreme heat", hz_snow: "Snow / avalanches", hz_wind: "Wind / thunderstorms",
       downloading: "Downloading forecasts…", server: "Server · updated at", direct: "Direct · updated at", missing: "unavailable", offline: "⚠️ Offline – data from", failed: "⚠️ Could not download data",
@@ -41,7 +41,7 @@
         "<b>Privacy:</b> the app does not ask for your location, has no accounts and collects no personal data.",
         "<b>In danger call 112</b>: it is free across Europe."],
       discSrc: "No guarantee of accuracy: use of the data is at your own responsibility." },
-    fr: { loading: "Chargement…", msgLang: "Langue du message", refresh: "⟳ Actualiser", info: "ⓘ Avertissements", all: "Toutes", noData: "Aucune donnée.",
+    fr: { areasL: "Alertes officielles par zone", avalL: "Risque d'avalanche (bulletins)", hydroL: "Stations hydrométriques", stationsL: "Stations météo", sitesL: "Points critiques", emptyL: "aucune donnée chargée", layers: "Que montrer sur la carte", avalDeg: "niveau de risque d'avalanche", ofWarn: "Alerte officielle", lgPoints: "Points et zones", lgAval: "Avalanches (1–5)", loading: "Chargement…", msgLang: "Langue du message", refresh: "⟳ Actualiser", info: "ⓘ Avertissements", all: "Toutes", noData: "Aucune donnée.",
       lvl0: "aucune alerte", lvl1: "jaune", lvl2: "orange", lvl3: "rouge", next72: "72 prochaines heures",
       hz_official: "Alerte officielle (MeteoAlarm)", hz_flood: "Crue / crue soudaine", hz_rain: "Fortes pluies", hz_cold: "Froid / hypothermie", hz_heat: "Chaleur extrême", hz_snow: "Neige / avalanches", hz_wind: "Vent / orages",
       downloading: "Téléchargement des prévisions…", server: "Serveur · mis à jour à", direct: "Direct · mis à jour à", missing: "indisponibles", offline: "⚠️ Hors ligne – données du", failed: "⚠️ Impossible de télécharger les données",
