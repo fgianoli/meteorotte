@@ -40,9 +40,10 @@
   const avalLayer = L.layerGroup();                // grado valanghe per micro-regione
   const hydroLayer = L.layerGroup().addTo(map);    // idrometri
   const stationLayer = L.layerGroup();             // stazioni meteo
+  const gridLayer = L.layerGroup();                // griglia meteo lungo i corridoi
   const empty = (n) => (n ? "" : ` <i style="color:#94a3b8">(${T("emptyL")})</i>`);
   const overlays = {
-    [T("sitesL")]: siteLayer, [T("areasL")]: areaLayer, [T("hydroL")]: hydroLayer, [T("avalL")]: avalLayer, [T("stationsL")]: stationLayer,
+    [T("sitesL")]: siteLayer, [T("areasL")]: areaLayer, [T("hydroL")]: hydroLayer, [T("avalL")]: avalLayer, [T("stationsL")]: stationLayer, [T("gridL")]: gridLayer,
     [T("radar")]: radarLayer, [T("wind")]: windLayer, [T("trails")]: trailLayer,
     [T("shelters") + empty((window.SHELTERS || []).length)]: shelterLayer,
     [T("aid") + empty((window.AIUTI || []).length)]: aidLayer
@@ -52,6 +53,24 @@
   const lc = layerCtl.getContainer().querySelector(".leaflet-control-layers-list");
   if (lc) { const h = document.createElement("div"); h.className = "lch"; h.textContent = T("layers"); lc.prepend(h); }
   map.createPane("areas").style.zIndex = 350; // sotto i punti
+
+  // Griglia meteo: una cella per nodo, colorata con il livello massimo delle prossime 6 ore
+  async function loadGrid() {
+    if (!map.hasLayer(gridLayer)) return;
+    try {
+      const g = await (await fetch("api/grid.json", { cache: "no-store" })).json(), i = Math.floor((Date.now() / 1000 - g.t0) / 3600), h = g.step / 2;
+      gridLayer.clearLayers();
+      for (const c of g.cells) {
+        if (i < 0 || i >= c.tl.length) continue;
+        let lv = 0; const types = [];
+        for (const t in c.hz) { let m = 0; for (let k = i; k < Math.min(i + 6, c.hz[t].length); k++) m = Math.max(m, +c.hz[t][k]); if (m) types.push((ICONS[t] || "") + " " + T("hzs_" + t) + ": " + LEVEL_NAME[m]); lv = Math.max(lv, m); }
+        const box = document.createElement("div");
+        [c.el + " m"].concat(types.length ? types : [LEVEL_NAME[0]]).forEach((r) => { const d = document.createElement("div"); d.textContent = r; box.appendChild(d); });
+        L.rectangle([[c.lat - h, c.lon - h], [c.lat + h, c.lon + h]], { pane: "areas", stroke: false, fillColor: LEVEL_COLOR[lv], fillOpacity: lv ? 0.4 : 0.18 }).bindPopup(box).addTo(gridLayer);
+      }
+    } catch (e) { console.warn("Griglia non disponibile", e); }
+  }
+  map.on("overlayadd", (e) => { if (e.layer === gridLayer) loadGrid(); });
 
   const AVAL_COLOR = ["#cccccc", "#ccff66", "#ffff00", "#ff9900", "#ff0000", "#7f0000"]; // scala europea 1–5
   // Aree e stazioni pubblicate dal server (in modalità diretta non ci sono).

@@ -53,7 +53,7 @@
   const COLOR = ["#15803d", "#eab308", "#ea580c", "#b91c1c"];
   const RADIUS = { fiume: 500, urbano: 800, bosco: 3000, montagna: 4000, pianura: 3000 };
   const $ = (s) => document.querySelector(s);
-  let lang = null, data = null, watch = null, last = "", audio = null, lastPos = null;
+  let lang = null, data = null, grid = null, watch = null, last = "", audio = null, lastPos = null;
   try { lang = localStorage.getItem("meteorotte-msg-lang"); } catch (e) {}
 
   // ---------- lingua: il nome di ogni lingua nella propria scrittura
@@ -68,6 +68,7 @@
   // ---------- dati
   async function load() {
     try { const r = await fetch("api/alerts.json", { cache: "no-store" }); if (r.ok) data = await r.json(); } catch (e) {}
+    try { const r = await fetch("api/grid.json", { cache: "no-store" }); if (r.ok) grid = await r.json(); } catch (e) {} // previsioni di 72 ore: restano valide anche senza rete
     if (lastPos) show(lastPos);
   }
   load(); setInterval(load, 5 * 60 * 1000);
@@ -110,6 +111,16 @@
     }
     const m = find(window.EAWS_REGIONS || {}, la, lo), av = m && A.eaws && A.eaws[m];
     if (av && mountain) add("snow", av.v >= 4 ? 3 : av.v === 3 ? 2 : av.v === 2 ? 1 : 0); // il pericolo valanghe conta solo in quota
+    // Griglia meteo lungo i corridoi: cella più vicina, livello massimo da adesso alle prossime 6 ore
+    if (grid && grid.cells) {
+      const i = Math.floor((Date.now() / 1000 - grid.t0) / 3600);
+      let best = null, bd = 22000;
+      for (const c of grid.cells) { const d = distM(la, lo, c.lat, c.lon); if (d < bd) { bd = d; best = c; } }
+      if (best && i >= 0 && i < best.tl.length) {
+        covered = true;
+        for (const t in best.hz) { let lv = 0; for (let k = i; k < Math.min(i + 6, best.hz[t].length); k++) lv = Math.max(lv, +best.hz[t][k]); add(t === "snow" && !mountain && best.el < 1200 ? "cold" : t, lv); }
+      }
+    }
     const list = Object.entries(hz).map(([type, level]) => ({ type, level })).sort((a, b) => b.level - a.level);
     return { level: list.reduce((x, h) => Math.max(x, h.level), 0), hazards: list, place, covered, atSite: !!near };
   }

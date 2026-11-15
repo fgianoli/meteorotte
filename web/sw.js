@@ -1,5 +1,5 @@
 // Service worker: app utilizzabile offline con gli ultimi dati scaricati.
-const SHELL = "meteorotte-shell-v15", DATA = "meteorotte-data-v2";
+const SHELL = "meteorotte-shell-v16", DATA = "meteorotte-data-v2";
 const FILES = ["./", "index.html", "qui.html", "guida.html", "js/app.js", "js/alerts.js", "js/i18n.js", "js/ui-i18n.js", "data/hotspots.js", "data/shelters.js", "data/aiuti.js", "data/areas.js", "data/dpc-zones.js", "data/eaws.js", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(SHELL).then((c) =>

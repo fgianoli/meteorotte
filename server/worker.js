@@ -10,7 +10,38 @@ const PRIVATE = process.env.PRIVATE_DIR || "/data/private";
 const INTERVAL = (+process.env.INTERVAL_MIN || 60) * 60 * 1000;
 const FAST = Math.max(2, +process.env.FAST_MIN || 10) * 60 * 1000; // idrometri e allerte ufficiali
 const RETRY = Math.min(FAST, 10 * 60 * 1000);
-let cache = null; // previsioni dei modelli: cambiano al massimo ogni ora, non serve riscaricarle a ogni giro
+let cache = null;
+// Griglia meteo lungo i corridoi: celle di GRID_STEP gradi entro GRID_KM km dai corridoi e dai punti critici, ricalcolata ogni GRID_HOURS ore.
+const GRID_MS = Math.max(1, +process.env.GRID_HOURS || 3) * 3600e3, GRID_STEP = 0.25, GRID_KM = +process.env.GRID_KM || 30;
+let gridT = 0, gridPts = null, gridStatus = "in attesa";
+function gridPoints() {
+  const lines = (S.CORRIDORS || []).concat(S.HOTSPOTS.map((h) => [[h.lat, h.lon], [h.lat, h.lon]]));
+  const all = lines.flat(), la0 = Math.min(...all.map((p) => p[0])) - 0.5, la1 = Math.max(...all.map((p) => p[0])) + 0.5, lo0 = Math.min(...all.map((p) => p[1])) - 0.5, lo1 = Math.max(...all.map((p) => p[1])) + 0.5;
+  const segKm = (la, lo, a, b) => { // distanza punto–segmento, in km (piano locale)
+    const kx = 111.32 * Math.cos(la * Math.PI / 180), px = (lo - a[1]) * kx, py = (la - a[0]) * 110.57, bx = (b[1] - a[1]) * kx, by = (b[0] - a[0]) * 110.57;
+    const t = Math.max(0, Math.min(1, (px * bx + py * by) / (bx * bx + by * by || 1)));
+    return Math.hypot(px - t * bx, py - t * by);
+  };
+  const pts = [];
+  for (let la = Math.ceil(la0 / GRID_STEP) * GRID_STEP; la <= la1; la += GRID_STEP)
+    for (let lo = Math.ceil(lo0 / GRID_STEP) * GRID_STEP; lo <= lo1; lo += GRID_STEP)
+      if (lines.some((l) => l.slice(1).some((b, i) => segKm(la, lo, l[i], b) <= GRID_KM))) pts.push([Math.round(la * 100) / 100, Math.round(lo * 100) / 100]);
+  return pts;
+}
+async function runGrid(now, status) {
+  if (Date.now() - gridT < GRID_MS - 30000) { status["griglia-meteo"] = gridStatus; return; }
+  const pts = gridPts || (gridPts = gridPoints());
+  const wx = await settle("griglia-meteo", src.forecast(pts), status);
+  if (!wx) { gridStatus = status["griglia-meteo"]; return; }
+  let t0 = null;
+  const cells = wx.map((w, k) => {
+    const r = S.Alerts.evaluate({ tipo: (w.elevation || 0) >= 1200 ? "montagna" : "pianura" }, w, [], null, now);
+    t0 = w.hourly.time[r.startIndex];
+    return { lat: pts[k][0], lon: pts[k][1], el: Math.round(w.elevation || 0), tl: r.timeline.join(""), hz: Object.fromEntries(Object.entries(r.byType).map(([t, a]) => [t, a.join("")])) };
+  });
+  writeAtomic(path.join(PUBLIC, "grid.json"), JSON.stringify({ generated: new Date(now * 1000).toISOString(), t0, step: GRID_STEP, cells }));
+  gridT = Date.now(); gridStatus = status["griglia-meteo"] = `ok (${cells.length} celle)`;
+} // previsioni dei modelli: cambiano al massimo ogni ora, non serve riscaricarle a ogni giro
 const CTX = {
   sender: process.env.CAP_SENDER || "meteorotte.local",
   senderName: process.env.CAP_SENDER_NAME || "MeteoRotte (prototipo)",
@@ -274,6 +305,8 @@ async function run() {
   }
   const stations = ((stz && stz.list) || []).filter((st) => (!st.time || now - st.time < 3 * 3600) && H.some((s) => dist(s.lat, s.lon, st.lat, st.lon) <= 60))
     .map((st) => ({ label: st.label, lat: st.lat, lon: st.lon, alt: st.alt, t: st.t, wind: st.wind, gust: st.gust, snow: st.snow, time: st.time, source: st.source }));
+
+  await runGrid(now, status);
 
   const generated = Math.floor(now);
   const out = { generated: new Date(generated * 1000).toISOString(), modelsUpdated: new Date(cache.t).toISOString(), validUntil: new Date((generated + 2 * INTERVAL / 1000) * 1000).toISOString(), sources: status, sites, areas, stations };

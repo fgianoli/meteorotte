@@ -164,6 +164,14 @@ Usa la posizione del telefono e la confronta, sul telefono, con il punto critico
 (Protezione Civile, MeteoAlarm per Italia e Francia, bollettini valanghe in quota). Fuori dalle zone coperte lo schermo resta grigio con un punto interrogativo:
 non avere informazioni non significa che non ci sia pericolo. Non sostituisce la mappa generale, che resta lo strumento per gli operatori.
 
+## Griglia meteo lungo i corridoi
+
+Per avere un'indicazione anche lontano dai punti critici, il worker calcola freddo, pioggia, vento, neve e caldo su una griglia di celle di 0,25°
+(circa 25 km) entro `GRID_KM` km dai corridoi di `web/data/corridors.js` e dai punti critici, ogni `GRID_HOURS` ore, e pubblica `/api/grid.json`.
+Il telefono la scarica intera e cerca da solo la propria cella; le previsioni valgono 72 ore, quindi funzionano anche senza rete.
+Sulla mappa è il livello «Meteo lungo i corridoi». I corridoi sono tracciati molto approssimativi tra località note, da rivedere con le associazioni.
+In montagna una cella di 25 km è grossolana: il punto critico e la zona di allerta ufficiale restano più affidabili.
+
 ## Avvisi di prossimità
 
 Il tasto «Avvisami se sono in un punto pericoloso» usa il GPS del telefono per mostrare l'avviso quando ci si trova vicino a un punto critico
