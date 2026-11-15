@@ -22,7 +22,7 @@
   header h1 { font-size:17px; margin:0; font-weight:650; letter-spacing:.2px; }
   header .sp { flex:1; }
   header select, header button { font:inherit; font-size:14px; border-radius:8px; border:1px solid #334155; background:#1e293b; color:#fff; padding:5px 8px; }
-  #help { font-size:14px; border-radius:8px; border:1px solid #334155; background:#1e293b; color:#fff; padding:5px 8px; text-decoration:none; }
+  #help, #simple { font-size:14px; border-radius:8px; border:1px solid #334155; background:#1e293b; color:#fff; padding:5px 8px; text-decoration:none; }
   #status { font-size:12px; color:#cbd5e1; }
   main { display:grid; grid-template-columns: 380px 1fr; min-height:0; }
   #map { min-height:0; }
@@ -89,7 +89,7 @@
     header .sp { display:none; }
     .ctl { flex-wrap:nowrap; overflow-x:auto; width:100%; padding-bottom:2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; } .ctl::-webkit-scrollbar { display:none; }
     .ctl > * { flex:none; white-space:nowrap; } .ctl label span { display:none; }
-    header select, header button, #help { font-size:13px; padding:7px 9px; }
+    header select, header button, #help, #simple { font-size:13px; padding:7px 9px; }
     body { grid-template-rows:auto minmax(0,1fr) auto; }
     main { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
     aside { border-right:0; }
@@ -115,6 +115,7 @@
     </label>
     <button id="install" hidden></button>
     <button id="push" hidden>🔔</button>
+    <a id="simple" href="qui.html" data-t="simple">🚦 Qui, adesso</a>
     <a id="help" href="guida.html" target="_blank" rel="noopener" data-t="help">❓ Guida</a>
     <button id="info" data-t="info">ⓘ Avvertenze</button>
     <button id="refresh" data-t="refresh">⟳ Aggiorna</button>

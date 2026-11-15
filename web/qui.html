@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MeteoRotte – qui, adesso</title>
+<meta name="theme-color" content="#14213d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Ethiopic", "Noto Naskh Arabic", sans-serif; }
+  body { height:100dvh; display:flex; flex-direction:column; background:#14213d; color:#fff; transition:background .4s; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  .top { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; }
+  .top a, .top button { font:inherit; font-size:26px; background:rgba(0,0,0,.25); color:inherit; border:0; border-radius:14px; padding:8px 14px; text-decoration:none; }
+  #stage { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:8px 18px; text-align:center; }
+  #pics { font-size:clamp(70px, 26vw, 150px); line-height:1.1; display:flex; flex-wrap:wrap; justify-content:center; gap:4px 18px; }
+  #text { font-size:clamp(18px, 5.2vw, 26px); line-height:1.4; font-weight:600; white-space:pre-wrap; max-width:640px; }
+  #place { font-size:14px; opacity:.85; }
+  .big { font:inherit; border:0; border-radius:24px; cursor:pointer; }
+  #go { width:min(70vw, 300px); aspect-ratio:1; border-radius:50%; font-size:clamp(90px, 30vw, 150px); background:#f97316; color:#fff; box-shadow:0 0 0 0 rgba(249,115,22,.7); animation:pulse 1.8s infinite; }
+  @keyframes pulse { 70% { box-shadow:0 0 0 34px rgba(249,115,22,0); } 100% { box-shadow:0 0 0 0 rgba(249,115,22,0); } }
+  .bottom { display:flex; gap:12px; padding:12px 14px 16px; }
+  .bottom > * { flex:1; font-size:30px; font-weight:800; padding:16px 8px; text-align:center; text-decoration:none; border-radius:20px; background:#fff; color:#111; border:0; }
+  #call { flex:2; } #say[hidden] { display:none; }
+  #langs { position:fixed; inset:0; background:#14213d; color:#fff; display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:18px; align-content:center; overflow:auto; z-index:10; }
+  #langs[hidden] { display:none; }
+  #langs button { font-size:24px; padding:22px 8px; background:#1e293b; color:#fff; border:2px solid #334155; }
+  .dark { color:#111; }
+</style>
+</head>
+<body>
+<div class="top"><button id="langbtn" aria-label="language">🌐</button><a href="index.html" aria-label="map">🗺️</a></div>
+<div id="stage">
+  <button id="go" class="big" aria-label="position">📍</button>
+  <div id="pics"></div>
+  <div id="text"></div>
+  <div id="place"></div>
+</div>
+<div class="bottom"><button id="say" hidden aria-label="audio">🔊</button><a id="call" href="tel:112">📞 112</a></div>
+<div id="langs" hidden></div>
+
+<script src="data/hotspots.js"></script>
+<script src="js/i18n.js"></script>
+<script src="data/dpc-zones.js"></script>
+<script src="data/areas.js"></script>
+<script src="data/eaws.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Schermata semplice: "qui, adesso". Tutto il calcolo avviene sul telefono; la posizione non viene inviata né salvata.
+  const COLOR = ["#15803d", "#eab308", "#ea580c", "#b91c1c"];
+  const RADIUS = { fiume: 500, urbano: 800, bosco: 3000, montagna: 4000, pianura: 3000 };
+  const $ = (s) => document.querySelector(s);
+  let lang = null, data = null, watch = null, last = "", audio = null, lastPos = null;
+  try { lang = localStorage.getItem("meteorotte-msg-lang"); } catch (e) {}
+
+  // ---------- lingua: il nome di ogni lingua nella propria scrittura
+  $("#langs").innerHTML = LANGS.map((l) => `<button class="big" data-l="${l.code}" lang="${l.code}">${l.label}</button>`).join("");
+  $("#langs").querySelectorAll("button").forEach((b) => (b.onclick = () => {
+    lang = b.dataset.l; try { localStorage.setItem("meteorotte-msg-lang", lang); } catch (e) {}
+    $("#langs").hidden = true; document.documentElement.lang = lang; if (lastPos) show(lastPos);
+  }));
+  $("#langbtn").onclick = () => ($("#langs").hidden = false);
+  if (!lang || !LANGS.some((l) => l.code === lang)) $("#langs").hidden = false; else document.documentElement.lang = lang;
+
+  // ---------- dati
+  async function load() {
+    try { const r = await fetch("api/alerts.json", { cache: "no-store" }); if (r.ok) data = await r.json(); } catch (e) {}
+    if (lastPos) show(lastPos);
+  }
+  load(); setInterval(load, 5 * 60 * 1000);
+
+  const distM = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742000 * Math.asin(Math.sqrt(x)); };
+  const inRing = (la, lo, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const yi = r[i][0], xi = r[i][1], yj = r[j][0], xj = r[j][1]; if ((yi > la) !== (yj > la) && lo < (xj - xi) * (la - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const find = (shapes, la, lo) => { for (const k in shapes) if ((shapes[k].g || shapes[k]).some((r) => inRing(la, lo, r))) return k; return null; };
+  function typeOf(event, river, mountain) { // evento MeteoAlarm → tipo di pericolo
+    const e = event.toLowerCase();
+    if (/rain|flood|precipitation/.test(e)) return river ? "flood" : "rain";
+    if (/thunder|wind|storm/.test(e)) return "wind";
+    if (/snow|ice|avalanche/.test(e)) return mountain ? "snow" : "cold";
+    if (/low.?temp|cold|frost/.test(e)) return "cold";
+    if (/high.?temp|heat/.test(e)) return "heat";
+    return null;
+  }
+
+  // Pericoli nel punto in cui si trova il telefono: punto critico vicino + zone di allerta ufficiali che lo contengono.
+  function hazardsAt(la, lo, alt, acc) {
+    const hz = {}; let place = "", covered = false; // covered: per questo punto esiste almeno una fonte di allerta
+    const add = (type, level) => { if (type && level > 0) hz[type] = Math.max(hz[type] || 0, Math.min(3, level)); };
+    const mountain = alt != null && alt >= 1200;
+    const near = HOTSPOTS.map((s) => ({ s, d: distM(la, lo, s.lat, s.lon) })).filter((o) => o.d <= (o.s.raggio || RADIUS[o.s.tipo] || 1000) + Math.min(acc || 0, 500)).sort((a, b) => a.d - b.d)[0];
+    if (near) {
+      place = near.s.nome; covered = true;
+      if (near.s.tipo === "fiume") add("flood", 1); // nel letto di un fiume l'avviso c'è sempre
+      const e = data && data.sites.find((x) => x.id === near.s.id);
+      if (e) e.res.hazards.forEach((h) => add(h.type === "official" ? null : h.type, h.level));
+    }
+    const A = (data && data.areas) || {};
+    const z = find(window.DPC_ZONES || {}, la, lo), zd = z && A.dpc && A.dpc[z];
+    if (z) covered = !!(A.dpcIssued); // zona della Protezione Civile con un bollettino valido
+    if (z && !place) place = DPC_ZONES[z].n;
+    if (zd) { add("flood", zd.idraulico[0]); add(near && near.s.tipo === "fiume" ? "flood" : "rain", zd.idrogeo[0]); add("wind", zd.temporali[0]); }
+    for (const feed of ["italy", "france"]) {
+      const k = find((window.AREAS || {})[feed] || {}, la, lo), a = k && A.meteoalarm && A.meteoalarm[feed] && A.meteoalarm[feed][k];
+      if (k && A.meteoalarm && A.meteoalarm[feed]) covered = true;
+      if (k && !place) place = AREAS[feed][k].n;
+      if (a) a.events.forEach((ev) => { const lv = /red/i.test(ev) ? 3 : /orange/i.test(ev) ? 2 : /yellow/i.test(ev) ? 1 : a.level; add(typeOf(ev, near && near.s.tipo === "fiume", mountain), lv); });
+    }
+    const m = find(window.EAWS_REGIONS || {}, la, lo), av = m && A.eaws && A.eaws[m];
+    if (av && mountain) add("snow", av.v >= 4 ? 3 : av.v === 3 ? 2 : av.v === 2 ? 1 : 0); // il pericolo valanghe conta solo in quota
+    const list = Object.entries(hz).map(([type, level]) => ({ type, level })).sort((a, b) => b.level - a.level);
+    return { level: list.reduce((x, h) => Math.max(x, h.level), 0), hazards: list, place, covered, atSite: !!near };
+  }
+
+  function show(pos) {
+    lastPos = pos;
+    const la = pos.coords.latitude, lo = pos.coords.longitude;
+    const r = hazardsAt(la, lo, pos.coords.altitude, pos.coords.accuracy);
+    const L = LANGS.find((l) => l.code === lang) || LANGS[0];
+    // Fuori dalle zone coperte non si mostra il verde: non avere informazioni non significa che non ci sia pericolo.
+    document.body.style.background = r.covered ? COLOR[r.level] : "#475569"; document.body.classList.toggle("dark", r.covered && r.level === 1);
+    $("#go").style.display = "none";
+    $("#pics").textContent = r.hazards.length ? r.hazards.slice(0, 3).map((h) => ICONS[h.type]).join(" ") : r.covered ? "✅" : "❔";
+    const msg = r.hazards.length ? r.hazards.slice(0, 3).map((h) => (MSG[h.type][L.code] || MSG[h.type].en)).join("\n\n") : r.atSite ? (MSG.none[L.code] || MSG.none.en) : ""; // la frase sulle 72 ore vale solo nei punti con previsione
+    $("#text").textContent = msg; $("#text").dir = L.rtl ? "rtl" : "ltr"; $("#text").lang = L.code;
+    $("#place").textContent = r.place + (data ? " · " + new Date(data.generated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : " · ⚠️");
+    const key = r.level + r.hazards.map((h) => h.type).join("");
+    if (key !== last) { last = key; if (r.level >= 2) try { navigator.vibrate && navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {} prepareAudio(r, L.code); }
+  }
+
+  // ---------- voce: file registrati dai mediatori in audio/<lingua>/<pericolo>.mp3 (se non ci sono, il tasto non compare)
+  async function prepareAudio(r, code) {
+    $("#say").hidden = true; audio = null;
+    if (!r.hazards.length && !r.atSite) return;
+    const types = r.hazards.length ? r.hazards.slice(0, 3).map((h) => h.type) : ["none"];
+    const urls = types.map((t) => `audio/${code}/${t}.mp3`);
+    try { const ok = await Promise.all(urls.map((u) => fetch(u, { method: "HEAD" }).then((x) => x.ok).catch(() => false))); if (!ok.every(Boolean)) return; } catch (e) { return; }
+    audio = urls; $("#say").hidden = false;
+  }
+  $("#say").onclick = () => { if (!audio) return; let i = 0; const a = new Audio(audio[0]); a.onended = () => { if (++i < audio.length) { a.src = audio[i]; a.play(); } }; a.play().catch(() => {}); };
+
+  // ---------- posizione
+  $("#go").onclick = () => {
+    if (!navigator.geolocation) { $("#pics").textContent = "📍🚫"; return; }
+    $("#go").style.animation = "none"; $("#go").textContent = "⏳";
+    watch = navigator.geolocation.watchPosition(show, (e) => { if (e.code === 1) { $("#go").style.display = ""; $("#go").textContent = "📍"; $("#pics").textContent = "📍🚫"; } }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+  };
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

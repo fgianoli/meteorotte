@@ -156,6 +156,14 @@ Per Slovenia, Croazia, Bosnia, Serbia, Bulgaria e Grecia le allerte ufficiali re
 Sulla mappa: bivacchi, rifugi e ripari entro 15 km dai punti (OpenStreetMap, `tools/fetch_osm.py`) e sentieri segnati (Waymarked Trails).
 `web/data/aiuti.js` è predisposto per i punti di aiuto, da compilare solo con luoghi confermati dalle associazioni.
 
+## Schermata semplice «Qui, adesso»
+
+`web/qui.html` è pensata per chi non legge le mappe o non legge affatto: nessuna mappa, uno schermo intero colorato come un semaforo,
+figure grandi, il tasto per il 112 e, quando ci sono le registrazioni, la voce (`web/audio/`).
+Usa la posizione del telefono e la confronta, sul telefono, con il punto critico più vicino e con le zone di allerta ufficiali
+(Protezione Civile, MeteoAlarm per Italia e Francia, bollettini valanghe in quota). Fuori dalle zone coperte lo schermo resta grigio con un punto interrogativo:
+non avere informazioni non significa che non ci sia pericolo. Non sostituisce la mappa generale, che resta lo strumento per gli operatori.
+
 ## Avvisi di prossimità
 
 Il tasto «Avvisami se sono in un punto pericoloso» usa il GPS del telefono per mostrare l'avviso quando ci si trova vicino a un punto critico

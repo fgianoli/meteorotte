@@ -35,5 +35,18 @@
    "type": "image/svg+xml",
    "purpose": "any"
   }
+ ],
+ "shortcuts": [
+  {
+   "name": "Qui, adesso",
+   "short_name": "Qui",
+   "url": "./qui.html",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  }
  ]
 }
